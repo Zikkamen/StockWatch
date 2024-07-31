@@ -14,15 +14,13 @@ impl FinnhubClient {
     }
 
     pub fn print_hello(&self) {
-        println!("{}", self.addr);
-
         let mut client = ClientBuilder::new(&self.addr).unwrap()
             .connect(None)
             .unwrap();
 
-        println!("Successfully connected");
+        println!("Successfully connected to Finnhub");
 
-        // send messages!
+        // send messages example Apple!
         let message = Message::text("{\"type\":\"subscribe\",\"symbol\":\"AAPL\"}");
 
         client.send_message(&message).unwrap();
