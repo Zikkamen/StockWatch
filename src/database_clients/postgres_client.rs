@@ -9,7 +9,7 @@ pub struct PostgresClient {
 }
 
 impl PostgresClient {
-    pub fn new() -> Self {
+    pub fn new(list_of_stocks:&Vec<String>) -> Self {
         let client = match Client::connect("host=localhost user=postgres password=postgres", NoTls) {
             Ok(client) => client,
             Err(e) => panic!("Error creating PostgreClient {}", e),
@@ -17,7 +17,7 @@ impl PostgresClient {
 
         let mut postgres_client:PostgresClient = PostgresClient{ client: client };
 
-        match postgres_client.initialize_database() {
+        match postgres_client.initialize_database(list_of_stocks) {
             Ok(_) => (),
             Err(e) => panic!("Error initialzing database {}", e),
         };
@@ -38,16 +38,18 @@ impl PostgresClient {
         Ok(())
     }
 
-    fn initialize_database(&mut self) -> Result<(), Box<dyn error::Error + 'static>> {
-        self.client.batch_execute(format!("
-            CREATE TABLE IF NOT EXISTS Finnhub_{} (
-                id      SERIAL PRIMARY KEY,
-                price    BIGINT,
-                conditions    BIGINT,
-                time BIGINT,
-                volume BIGINT
-            )
-        ", "AAPL").as_str())?;
+    fn initialize_database(&mut self, list_of_stocks: &Vec<String>) -> Result<(), Box<dyn error::Error + 'static>> {
+        for stock in list_of_stocks.iter() {
+            self.client.batch_execute(format!("
+                CREATE TABLE IF NOT EXISTS Finnhub_{} (
+                    id      SERIAL PRIMARY KEY,
+                    price    BIGINT,
+                    conditions    BIGINT,
+                    time BIGINT,
+                    volume BIGINT
+                )
+            ", stock).as_str())?;
+        }
 
         Ok(())
     }

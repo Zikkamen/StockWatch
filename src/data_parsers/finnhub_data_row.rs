@@ -50,6 +50,10 @@ impl FinnhubDataRow {
         let mut conditions: i64 = 0;
 
         for condition in raw_value.split(',').into_iter() {
+            if condition.len() == 0{
+                break;
+            }
+
             conditions += 1 << condition.parse::<i32>().unwrap();
         }
 

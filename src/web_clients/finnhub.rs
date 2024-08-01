@@ -17,14 +17,14 @@ impl FinnhubClient {
         }
     }
 
-    pub fn print_hello(&mut self) {
+    pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
         let mut retry_count: i32 = 0;
 
         while retry_count <= 2 {
             let client = ClientBuilder::new(&self.addr).unwrap().connect(None);
 
             if client.is_ok() {
-                self.start_websocket(&mut client.unwrap());
+                self.start_websocket(&mut client.unwrap(), list_of_stocks);
                 retry_count = 0;
             }
 
@@ -35,10 +35,16 @@ impl FinnhubClient {
         }
     }
 
-    fn start_websocket(&mut self, client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>) {
-        let message = Message::text("{\"type\":\"subscribe\",\"symbol\":\"AAPL\"}");
+    fn start_websocket(&mut self, 
+        client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
+        stock_config_list: &Vec<String>) {
+        
+        for stock in stock_config_list.into_iter() {
+            let message = Message::text(format!("{}\"type\":\"subscribe\",\"symbol\":\"{}\"{}", "{", stock, "}"));
 
-        client.send_message(&message).unwrap();
+            client.send_message(&message).unwrap();
+        }
+        
 
         loop {
             let message:OwnedMessage = match client.recv_message() {
