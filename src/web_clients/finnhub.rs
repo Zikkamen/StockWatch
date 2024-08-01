@@ -53,7 +53,7 @@ impl FinnhubClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
-                    self.postgres_client.add_finnhub_data(&text);
+                    let _ = self.postgres_client.add_finnhub_data(&text);
                     println!("{}", text);
                 }
                 OwnedMessage::Close(_) => {

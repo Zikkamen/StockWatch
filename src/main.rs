@@ -7,11 +7,10 @@ mod data_parsers;
 use crate::values_store::credentials_store::CredentialsStore;
 use crate::web_clients::finnhub::FinnhubClient;
 use crate::database_clients::postgres_client::PostgresClient;
-use crate::data_parsers::finnhub_parser::parse_finnhub_data;
 
 fn main() {
     let credentials_store:CredentialsStore = CredentialsStore::new();
-    let mut postgres_client:PostgresClient = PostgresClient::new();
+    let postgres_client:PostgresClient = PostgresClient::new();
 
     let mut finnhub_client:FinnhubClient = FinnhubClient::new(credentials_store, postgres_client);
     finnhub_client.print_hello();
