@@ -11,8 +11,8 @@ fn main() {
     let credentials_store:CredentialsStore = CredentialsStore::new();
 
     let finnhub_client:FinnhubClient = FinnhubClient::new(credentials_store);
-    //finnhub_client.print_hello();
+    finnhub_client.print_hello();
 
-    let mut postgres_client:PostgresClient = PostgresClient::new();
-    postgres_client.print_hello();
+    //let mut postgres_client:PostgresClient = PostgresClient::new();
+    //postgres_client.print_hello();
 }

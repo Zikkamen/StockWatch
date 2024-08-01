@@ -1,4 +1,5 @@
-use websocket::{ ClientBuilder, Message, OwnedMessage };
+use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::sync::NetworkStream};
+use std::{thread, time};
 
 use crate::values_store::credentials_store::CredentialsStore;
 
@@ -14,19 +15,37 @@ impl FinnhubClient {
     }
 
     pub fn print_hello(&self) {
-        let mut client = ClientBuilder::new(&self.addr).unwrap()
-            .connect(None)
-            .unwrap();
+        let mut retry_count: i32 = 0;
 
-        println!("Successfully connected to Finnhub");
+        while retry_count <= 2 {
+            let client = ClientBuilder::new(&self.addr).unwrap().connect(None);
 
-        // send messages example Apple!
+            if client.is_ok() {
+                self.start_websocket(&mut client.unwrap());
+                retry_count = 0;
+            }
+
+            thread::sleep(time::Duration::from_millis(1000));
+
+            retry_count += 1;
+            println!("Retry {}", retry_count);
+        }
+    }
+
+    fn start_websocket(&self, client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>) {
         let message = Message::text("{\"type\":\"subscribe\",\"symbol\":\"AAPL\"}");
 
         client.send_message(&message).unwrap();
 
         loop {
-            let message:OwnedMessage = client.recv_message().unwrap();
+            let message:OwnedMessage = match client.recv_message() {
+                Ok(p) => p,
+                Err(e) => {
+                    println!("Error receiving message {} \n Closing Client", e);
+                    let _ = client.send_message(&Message::close());
+                    break;
+                },
+            };
 
             match message {
                 OwnedMessage::Text(txt) => {
