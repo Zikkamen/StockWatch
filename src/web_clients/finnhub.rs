@@ -2,19 +2,22 @@ use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::syn
 use std::{thread, time};
 
 use crate::values_store::credentials_store::CredentialsStore;
+use crate::database_clients::postgres_client::PostgresClient;
 
 pub struct FinnhubClient{
     addr: String,
+    postgres_client: PostgresClient,
 }
 
 impl FinnhubClient {
-    pub fn new(credentials_store: CredentialsStore) -> Self {
+    pub fn new(credentials_store: CredentialsStore, postgres_client: PostgresClient) -> Self {
         FinnhubClient{ 
             addr: format!("wss://ws.finnhub.io?token={}", credentials_store.get_token("Finnhub.io".to_string())),
+            postgres_client: postgres_client,
         }
     }
 
-    pub fn print_hello(&self) {
+    pub fn print_hello(&mut self) {
         let mut retry_count: i32 = 0;
 
         while retry_count <= 2 {
@@ -32,7 +35,7 @@ impl FinnhubClient {
         }
     }
 
-    fn start_websocket(&self, client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>) {
+    fn start_websocket(&mut self, client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>) {
         let message = Message::text("{\"type\":\"subscribe\",\"symbol\":\"AAPL\"}");
 
         client.send_message(&message).unwrap();
@@ -50,6 +53,7 @@ impl FinnhubClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
+                    self.postgres_client.add_finnhub_data(&text);
                     println!("{}", text);
                 }
                 OwnedMessage::Close(_) => {
