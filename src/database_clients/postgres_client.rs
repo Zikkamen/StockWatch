@@ -18,7 +18,7 @@ impl PostgresClient {
         let mut postgres_client:PostgresClient = PostgresClient{ client: client };
 
         match postgres_client.initialize_database() {
-            Ok(v) => (),
+            Ok(_) => (),
             Err(e) => panic!("Error initialzing database {}", e),
         };
 
@@ -27,11 +27,11 @@ impl PostgresClient {
 
     pub fn add_finnhub_data(&mut self, json_data: &String) -> Result<(), Box<dyn error::Error + 'static>>{
         let finnhub_data_rows:Vec<FinnhubDataRow> = parse_finnhub_data(json_data);
-        
+
         for data_row in finnhub_data_rows {
             self.client.execute(
-                format!("INSERT INTO Finnhub_{} (price, conditions, time) VALUES ($1, $2, $3)", data_row.get_stockname()).as_str(),
-                &[data_row.get_price(), data_row.get_conditions(), data_row.get_time()],
+                format!("INSERT INTO Finnhub_{} (price, conditions, time, volume) VALUES ($1, $2, $3, $4)", data_row.get_stockname()).as_str(),
+                &[data_row.get_price(), data_row.get_conditions(), data_row.get_time(), data_row.get_volume()],
             )?;
         }
 
@@ -44,7 +44,8 @@ impl PostgresClient {
                 id      SERIAL PRIMARY KEY,
                 price    BIGINT,
                 conditions    BIGINT,
-                time BIGINT
+                time BIGINT,
+                volume BIGINT
             )
         ", "AAPL").as_str())?;
 
