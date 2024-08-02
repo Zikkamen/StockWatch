@@ -1,5 +1,5 @@
 [package]
-name = "rust_projects"
+name = "stockwatch"
 version = "0.1.0"
 edition = "2021"
 

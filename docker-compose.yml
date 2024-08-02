@@ -2,7 +2,16 @@
 version: '3.1'
 
 services:
-  postgresql-master:
+  stock-watch:
+    restart: always
+    depends_on:
+      - postgresql-main
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    network_mode: "host"
+
+  postgresql-main:
     image: bitnami/postgresql
     restart: always
     ports:
@@ -21,16 +30,16 @@ services:
       - POSTGRESQL_DATABASE=postgres
       - ALLOW_EMPTY_PASSWORD=yes
 
-  postgresql-slave:
+  postgresql-replica1:
     image: bitnami/postgresql
     restart: always
     ports:
       - '5432'
     depends_on:
-      - postgresql-master
+      - postgresql-main
     environment:
       - POSTGRESQL_PASSWORD=postgres
-      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_MASTER_HOST=postgresql-main
       - POSTGRESQL_PGAUDIT_LOG=READ
       - POSTGRESQL_LOG_HOSTNAME=true
       - POSTGRESQL_REPLICATION_MODE=slave
