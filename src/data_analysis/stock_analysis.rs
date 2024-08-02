@@ -62,6 +62,7 @@ impl StockInformation {
         DatabaseTradeModel {
             first_trade: self.first_trade,
             num_of_trades: self.num_of_trades,
+            volume_moved: total_volume as i32,
             avg_price: avg_price,
             min_price: min_price,
             max_price: max_price,
