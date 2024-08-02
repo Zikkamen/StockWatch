@@ -4,6 +4,8 @@ version: '3.1'
 services:
   stock-watch:
     restart: always
+    depends_on:
+      - postgresql-main
     build:
       context: .
       dockerfile: ./Dockerfile
