@@ -8,8 +8,8 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgresql_master_data:/bitnami/postgresql
-      - ./db.sql:/docker-entrypoint-initdb.d/db.sql
+      - postgresql_master_data:/bitnami/target/postgresql
+      - ./db.sql:/docker-entrypoint-initdb.d/target/db.sql
     environment:
       - POSTGRESQL_PGAUDIT_LOG=READ,WRITE
       - POSTGRESQL_LOG_HOSTNAME=true
