@@ -4,6 +4,7 @@ use postgres::{Client, NoTls};
 pub struct DatabaseTradeModel {
     pub first_trade:i64,
     pub num_of_trades: i32,
+    pub volume_moved: i32,
     pub avg_price:i64,
     pub min_price:i64,
     pub max_price:i64,
@@ -32,9 +33,10 @@ impl PostgresClient {
 
     pub fn add_finnhub_data(&mut self, stock_name:&String, database_model:DatabaseTradeModel) -> Result<(), Box<dyn error::Error + 'static>>{
         self.client.execute(
-            format!("INSERT INTO Finnhub_{} (time, avg_price) VALUES ($1, $2)", stock_name).as_str(),
+            format!("INSERT INTO Finnhub_{} (time, num_of_trades, volume_moved, avg_price, min_price, max_price) VALUES ($1, $2, $3, $4, $5, $6)", stock_name).as_str(),
             &[&database_model.first_trade,
               &database_model.num_of_trades,
+              &database_model.volume_moved,
               &database_model.avg_price,
               &database_model.min_price,
               &database_model.max_price,
@@ -50,6 +52,7 @@ impl PostgresClient {
                 CREATE TABLE IF NOT EXISTS Finnhub_{} (
                     time    BIGINT PRIMARY KEY,
                     num_of_trades INT,
+                    volume_moved INT,
                     avg_price BIGINT,
                     min_price BIGINT,
                     max_price BIGINT
