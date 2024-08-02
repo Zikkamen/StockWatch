@@ -1,8 +1,13 @@
 use std::{ error };
 use postgres::{Client, NoTls};
 
-use crate::data_parsers::finnhub_data_row::FinnhubDataRow;
-use crate::data_parsers::finnhub_parser::parse_finnhub_data;
+pub struct DatabaseTradeModel {
+    pub first_trade:i64,
+    pub num_of_trades: i32,
+    pub avg_price:i64,
+    pub min_price:i64,
+    pub max_price:i64,
+}
 
 pub struct PostgresClient {
     client: Client,
@@ -25,15 +30,16 @@ impl PostgresClient {
         postgres_client
     }
 
-    pub fn add_finnhub_data(&mut self, json_data: &String) -> Result<(), Box<dyn error::Error + 'static>>{
-        let finnhub_data_rows:Vec<FinnhubDataRow> = parse_finnhub_data(json_data);
-
-        for data_row in finnhub_data_rows {
-            self.client.execute(
-                format!("INSERT INTO Finnhub_{} (price, conditions, time, volume) VALUES ($1, $2, $3, $4)", data_row.get_stockname()).as_str(),
-                &[data_row.get_price(), data_row.get_conditions(), data_row.get_time(), data_row.get_volume()],
-            )?;
-        }
+    pub fn add_finnhub_data(&mut self, stock_name:&String, database_model:DatabaseTradeModel) -> Result<(), Box<dyn error::Error + 'static>>{
+        self.client.execute(
+            format!("INSERT INTO Finnhub_{} (time, avg_price) VALUES ($1, $2)", stock_name).as_str(),
+            &[&database_model.first_trade,
+              &database_model.num_of_trades,
+              &database_model.avg_price,
+              &database_model.min_price,
+              &database_model.max_price,
+            ],
+        )?;
 
         Ok(())
     }
@@ -42,11 +48,11 @@ impl PostgresClient {
         for stock in list_of_stocks.iter() {
             self.client.batch_execute(format!("
                 CREATE TABLE IF NOT EXISTS Finnhub_{} (
-                    id      SERIAL PRIMARY KEY,
-                    price    BIGINT,
-                    conditions    BIGINT,
-                    time BIGINT,
-                    volume BIGINT
+                    time    BIGINT PRIMARY KEY,
+                    num_of_trades INT,
+                    avg_price BIGINT,
+                    min_price BIGINT,
+                    max_price BIGINT
                 )
             ", stock).as_str())?;
         }

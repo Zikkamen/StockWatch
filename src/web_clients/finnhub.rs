@@ -1,37 +1,26 @@
 use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::sync::NetworkStream};
-use std::{thread, time};
 
 use crate::values_store::credentials_store::CredentialsStore;
-use crate::database_clients::postgres_client::PostgresClient;
+use crate::data_analysis::stock_analysis::StockAnalyser;
 
 pub struct FinnhubClient{
     addr: String,
-    postgres_client: PostgresClient,
+    stock_analysis: StockAnalyser,
 }
 
 impl FinnhubClient {
-    pub fn new(credentials_store: CredentialsStore, postgres_client: PostgresClient) -> Self {
+    pub fn new(credentials_store: CredentialsStore, stock_analysis: StockAnalyser) -> Self {
         FinnhubClient{ 
             addr: format!("wss://ws.finnhub.io?token={}", credentials_store.get_token("Finnhub.io".to_string())),
-            postgres_client: postgres_client,
+            stock_analysis: stock_analysis,
         }
     }
 
     pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
-        let mut retry_count: i32 = 0;
+        let client = ClientBuilder::new(&self.addr).unwrap().connect(None);
 
-        while retry_count <= 2 {
-            let client = ClientBuilder::new(&self.addr).unwrap().connect(None);
-
-            if client.is_ok() {
-                self.start_websocket(&mut client.unwrap(), list_of_stocks);
-                retry_count = 0;
-            }
-
-            thread::sleep(time::Duration::from_millis(1000));
-
-            retry_count += 1;
-            println!("Retry {}", retry_count);
+        if client.is_ok() {
+            self.start_websocket(&mut client.unwrap(), list_of_stocks);
         }
     }
 
@@ -59,7 +48,7 @@ impl FinnhubClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
-                    let _ = self.postgres_client.add_finnhub_data(&text);
+                    let _ = self.stock_analysis.add_finnhub_data(&text);
                     println!("{}", text);
                 }
                 OwnedMessage::Close(_) => {
