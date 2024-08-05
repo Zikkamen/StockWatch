@@ -5,11 +5,12 @@ services:
   stock-watch:
     restart: always
     depends_on:
-      - postgresql-main
+      postgresql-main:
+        condition: service_healthy
     build:
       context: .
       dockerfile: ./Dockerfile
-    network_mode: "host"
+    network_mode: "host" 
 
   postgresql-main:
     image: bitnami/postgresql
@@ -29,6 +30,12 @@ services:
       - POSTGRESQL_PASSWORD=postgres
       - POSTGRESQL_DATABASE=postgres
       - ALLOW_EMPTY_PASSWORD=yes
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESQL_USERNAME} -d ${POSTGRESQL_DATABASE}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   postgresql-replica1:
     image: bitnami/postgresql
@@ -37,6 +44,7 @@ services:
       - '5432'
     depends_on:
       - postgresql-main
+      
     environment:
       - POSTGRESQL_PASSWORD=postgres
       - POSTGRESQL_MASTER_HOST=postgresql-main
