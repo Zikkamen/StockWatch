@@ -1,11 +1,7 @@
-FROM rust:1.80 as builder
+FROM rust:1.80
 
 COPY . .
 
-RUN cargo build --release
+RUN cargo install --path .
 
-FROM debian:bullseye-slim
-
-COPY --from=builder ./target/release/stockwatch ./target/release/stockwatch
-
-CMD  ["./target/release/stockwatch"]
+CMD ["stockwatch"]
