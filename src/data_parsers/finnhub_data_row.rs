@@ -43,7 +43,10 @@ impl FinnhubDataRow {
     }
 
     fn set_price(&mut self, raw_value: &String) {
-        self.p = (raw_value.parse::<f64>().unwrap() * 100.0) as i64;
+        match raw_value.parse::<f64>() {
+            Ok(v) => self.p = (v * 100.0) as i64,
+            Err(e) => println!("Error parsing {} with message: {}", raw_value, e),
+        };
     }
 
     fn set_conditions(&mut self, raw_value: &String) {
@@ -54,7 +57,14 @@ impl FinnhubDataRow {
                 break;
             }
 
-            conditions += 1 << condition.parse::<i32>().unwrap();
+            let num = match raw_value.parse::<i32>() {
+                Ok(v) => v,
+                Err(_) => 64,
+            };
+
+            if num > 63 { continue; }
+
+            conditions += 1 << num;
         }
 
         self.c = conditions;
@@ -69,6 +79,9 @@ impl FinnhubDataRow {
     }
 
     fn set_volume(&mut self, raw_value: &String) {
-        self.v = raw_value.parse::<i64>().unwrap();
+        match raw_value.parse::<f64>() {
+            Ok(v) => self.v = v as i64,
+            Err(e) => println!("Error parsing {} with message: {}", raw_value, e),
+        };
     }
 }

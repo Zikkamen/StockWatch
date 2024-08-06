@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::database_clients::postgres_client::PostgresClient;
 use crate::database_clients::postgres_client::DatabaseTradeModel;
 use crate::data_parsers::finnhub_parser::parse_finnhub_data;
+use crate::data_parsers::eodhd_parser::parse_eodhd_data;
 use crate::data_parsers::finnhub_data_row::FinnhubDataRow;
 
 pub struct StockInformation {
@@ -87,9 +88,15 @@ impl StockAnalyser {
     }
 
     pub fn add_finnhub_data(&mut self, json_data: &String) {
-        let finnhub_data_rows:Vec<FinnhubDataRow> = parse_finnhub_data(json_data);
+        self.add_data(&parse_finnhub_data(json_data));
+    }
 
-        for data_row in finnhub_data_rows {
+    pub fn add_eodhd_data(&mut self, json_data: &String) {
+        self.add_data(&parse_eodhd_data(json_data));
+    }
+
+    fn add_data(&mut self, data_rows: &Vec<FinnhubDataRow>) {
+        for data_row in data_rows {
             if !self.trade_map.contains_key(data_row.get_stockname()) {
                 self.trade_map.insert(data_row.get_stockname().clone(), StockInformation::new());
             }

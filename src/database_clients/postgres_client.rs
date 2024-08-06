@@ -35,7 +35,7 @@ impl PostgresClient {
 
     pub fn add_finnhub_data(&mut self, stock_name:&String, database_model:DatabaseTradeModel) -> Result<(), Box<dyn error::Error + 'static>>{
         self.client.execute(
-            format!("INSERT INTO Finnhub_{} (time, num_of_trades, volume_moved, avg_price, min_price, max_price) VALUES ($1, $2, $3, $4, $5, $6)", stock_name).as_str(),
+            format!("INSERT INTO Trades_{} (time, num_of_trades, volume_moved, avg_price, min_price, max_price) VALUES ($1, $2, $3, $4, $5, $6)", stock_name).as_str(),
             &[&database_model.first_trade,
               &database_model.num_of_trades,
               &database_model.volume_moved,
@@ -51,7 +51,7 @@ impl PostgresClient {
     fn initialize_database(&mut self, list_of_stocks: &Vec<String>) -> Result<(), Box<dyn error::Error + 'static>> {
         for stock in list_of_stocks.iter() {
             self.client.batch_execute(format!("
-                CREATE TABLE IF NOT EXISTS Finnhub_{} (
+                CREATE TABLE IF NOT EXISTS Trades_{} (
                     time    BIGINT PRIMARY KEY,
                     num_of_trades INT,
                     volume_moved INT,
