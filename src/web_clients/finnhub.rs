@@ -17,11 +17,10 @@ impl FinnhubClient {
     }
 
     pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
-        let client = ClientBuilder::new(&self.addr).unwrap().connect(None);
-
-        if client.is_ok() {
-            self.start_websocket(&mut client.unwrap(), list_of_stocks);
-        }
+        match ClientBuilder::new(&self.addr).unwrap().connect(None) {
+            Ok(mut client) => self.start_websocket(&mut client, list_of_stocks),
+            Err(e) => panic!("Error creating Finnhub Client: {}", e),
+        };
     }
 
     fn start_websocket(&mut self, 
@@ -32,6 +31,8 @@ impl FinnhubClient {
             let message = Message::text(format!("{}\"type\":\"subscribe\",\"symbol\":\"{}\"{}", "{", stock, "}"));
 
             client.send_message(&message).unwrap();
+
+            println!("Subscribed to {}", stock);
         }
         
 
