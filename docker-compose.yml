@@ -5,7 +5,7 @@ networks:
 
 services:
   stock-watch:
-    #restart: always
+    restart: always
     depends_on:
       postgresql-main:
         condition: service_healthy
