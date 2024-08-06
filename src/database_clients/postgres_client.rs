@@ -16,7 +16,7 @@ pub struct PostgresClient {
 
 impl PostgresClient {
     pub fn new(list_of_stocks:&Vec<String>) -> Self {
-        let client = match Client::connect("host=localhost user=postgres password=postgres", NoTls) {
+        let client = match Client::connect("host=postgresql-main user=postgres password=postgres", NoTls) {
             Ok(client) => client,
             Err(e) => panic!("Error creating PostgreClient {}", e),
         };
@@ -27,6 +27,8 @@ impl PostgresClient {
             Ok(_) => (),
             Err(e) => panic!("Error initialzing database {}", e),
         };
+
+        println!("Connected to PostgreSQL");
 
         postgres_client
     }

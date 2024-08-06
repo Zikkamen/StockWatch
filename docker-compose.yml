@@ -1,25 +1,25 @@
-# Use postgres/example user/password credentials
-version: '3.1'
+networks:
+  network1:
+    external: false
+    driver: bridge
 
 services:
   stock-watch:
-    restart: always
+    #restart: always
     depends_on:
       postgresql-main:
         condition: service_healthy
     build:
       context: .
       dockerfile: ./Dockerfile
-    network_mode: "host" 
+    networks:
+      - network1
 
   postgresql-main:
     image: bitnami/postgresql
     restart: always
-    ports:
-      - '5432:5432'
     volumes:
       - postgresql_master_data:/bitnami/target/postgresql
-      - ./db.sql:/docker-entrypoint-initdb.d/target/db.sql
     environment:
       - POSTGRESQL_PGAUDIT_LOG=READ,WRITE
       - POSTGRESQL_LOG_HOSTNAME=true
@@ -36,12 +36,12 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
+    networks:
+      - network1
 
   postgresql-replica1:
     image: bitnami/postgresql
     restart: always
-    ports:
-      - '5432'
     depends_on:
       - postgresql-main
       
@@ -55,13 +55,16 @@ services:
       - POSTGRESQL_REPLICATION_PASSWORD=repl_user
       - POSTGRESQL_MASTER_PORT_NUMBER=5432
       - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - network1
 
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
-
+    networks:
+      - network1
 
 volumes:
   postgresql_master_data:
