@@ -2,6 +2,9 @@ networks:
   network1:
     external: false
     driver: bridge
+  network2:
+    external: true
+    driver: bridge
 
 services:
   stock-watch:
@@ -44,7 +47,10 @@ services:
     restart: always
     depends_on:
       - postgresql-main
-      
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRESQL_PASSWORD=postgres
       - POSTGRESQL_MASTER_HOST=postgresql-main
@@ -57,6 +63,7 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     networks:
       - network1
+      - network2
 
   adminer:
     image: adminer

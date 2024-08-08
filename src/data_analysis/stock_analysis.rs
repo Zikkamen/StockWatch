@@ -87,8 +87,13 @@ impl StockAnalyser {
         StockAnalyser{ postgres_client: postgres_client, trade_map: HashMap::new() }
     }
 
-    pub fn add_finnhub_data(&mut self, json_data: &String) {
-        self.add_data(&parse_finnhub_data(json_data));
+    pub fn add_finnhub_data(&mut self, json_data: &String) -> bool {
+        let finnhub_data:Vec<FinnhubDataRow> = parse_finnhub_data(json_data);
+
+        match finnhub_data.len() {
+            0 => false,
+            _ => { self.add_data(&finnhub_data); true },
+        }
     }
 
     pub fn add_eodhd_data(&mut self, json_data: &String) {

@@ -28,7 +28,7 @@ impl FinnhubClient {
         stock_config_list: &Vec<String>) {
         
         for stock in stock_config_list.into_iter() {
-            let message = Message::text(format!("{}\"type\":\"subscribe\",\"symbol\":\"{}\"{}", "{", stock, "}"));
+            let message = Message::text(format!("{{\"type\":\"subscribe\",\"symbol\":\"{}\"}}", stock));
 
             client.send_message(&message).unwrap();
 
@@ -49,8 +49,15 @@ impl FinnhubClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
-                    let _ = self.stock_analysis.add_finnhub_data(&text);
-                    println!("{}", text);
+
+                    match self.stock_analysis.add_finnhub_data(&text) {
+                        true => println!("{}", text),
+                        false => {
+                            println!("{}", text);
+                            client.send_message(&Message::text("{ \"type\": \"pong\" }")).unwrap();
+                            println!("Send {{ type: pong }}");
+                        },
+                    };
                 }
                 OwnedMessage::Close(_) => {
                     let _ = client.send_message(&Message::close());
