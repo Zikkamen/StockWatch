@@ -1,78 +1,22 @@
-networks:
-  network1:
-    external: false
-    driver: bridge
-  network2:
-    external: true
-    driver: bridge
-
 services:
-  stock-watch:
-    restart: always
-    depends_on:
-      postgresql-main:
-        condition: service_healthy
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    networks:
-      - network1
-
   postgresql-main:
-    image: bitnami/postgresql
+    image: postgres
     restart: always
-    volumes:
-      - postgresql_master_data:/bitnami/target/postgresql
     environment:
-      - POSTGRESQL_PGAUDIT_LOG=READ,WRITE
-      - POSTGRESQL_LOG_HOSTNAME=true
-      - POSTGRESQL_REPLICATION_MODE=master
-      - POSTGRESQL_REPLICATION_USER=repl_user
-      - POSTGRESQL_REPLICATION_PASSWORD=repl_user
-      - POSTGRESQL_USERNAME=postgres
-      - POSTGRESQL_PASSWORD=postgres
-      - POSTGRESQL_DATABASE=postgres
-      - ALLOW_EMPTY_PASSWORD=yes
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DATABASE=postgres
+    ports:
+      - 5432:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESQL_USERNAME} -d ${POSTGRESQL_DATABASE}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
       interval: 10s
       retries: 5
       start_period: 30s
       timeout: 10s
-    networks:
-      - network1
-
-  postgresql-replica1:
-    image: bitnami/postgresql
-    restart: always
-    depends_on:
-      - postgresql-main
-    expose:
-      - "5432"
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRESQL_PASSWORD=postgres
-      - POSTGRESQL_MASTER_HOST=postgresql-main
-      - POSTGRESQL_PGAUDIT_LOG=READ
-      - POSTGRESQL_LOG_HOSTNAME=true
-      - POSTGRESQL_REPLICATION_MODE=slave
-      - POSTGRESQL_REPLICATION_USER=repl_user
-      - POSTGRESQL_REPLICATION_PASSWORD=repl_user
-      - POSTGRESQL_MASTER_PORT_NUMBER=5432
-      - ALLOW_EMPTY_PASSWORD=yes
-    networks:
-      - network1
-      - network2
 
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
-    networks:
-      - network1
-
-volumes:
-  postgresql_master_data:
-    driver: local
