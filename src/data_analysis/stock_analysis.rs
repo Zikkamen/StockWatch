@@ -1,28 +1,29 @@
 use std::collections::HashMap;
 
-use crate::database_clients::postgres_client::PostgresClient;
-use crate::database_clients::postgres_client::DatabaseTradeModel;
 use crate::data_parsers::finnhub_parser::parse_finnhub_data;
 use crate::data_parsers::eodhd_parser::parse_eodhd_data;
 use crate::data_parsers::finnhub_data_row::FinnhubDataRow;
+use crate::database_clients::data_web_client::DataWebClient;
+use crate::database_clients::data_web_client::DataTradeModel;
 
 pub struct StockInformation {
     trades: HashMap<i64, i64>,
     first_trade: i64,
     num_of_trades: i32,
+    time_limit_mil: i64,
 }
 
 impl StockInformation {
-    pub fn new() -> Self {
-        StockInformation{ trades: HashMap::new(), first_trade:-1, num_of_trades:0 }
+    pub fn new(time_limit_mil: i64) -> Self {
+        StockInformation{ trades: HashMap::new(), first_trade:-1, num_of_trades:0, time_limit_mil: time_limit_mil }
     }
 
-    pub fn add_trade(&mut self, data: &FinnhubDataRow) -> Option<DatabaseTradeModel> {
+    pub fn add_trade(&mut self, data: &FinnhubDataRow) -> Option<DataTradeModel> {
         if self.first_trade == -1 { self.first_trade = *data.get_time(); }
 
-        let mut output:Option<DatabaseTradeModel> = None;
+        let mut output:Option<DataTradeModel> = None;
 
-        if data.get_time() - self.first_trade > 10000 {
+        if data.get_time() - self.first_trade > self.time_limit_mil {
             output = Some(self.convert_data_to_model());
 
             self.reset_information(*data.get_time());
@@ -38,7 +39,7 @@ impl StockInformation {
         output
     }
 
-    fn convert_data_to_model(&self) -> DatabaseTradeModel {
+    fn convert_data_to_model(&self) -> DataTradeModel {
         let mut list_of_trades:Vec<Vec<i64>> = Vec::new();
 
         let mut total_price: i64 = 0;
@@ -60,7 +61,7 @@ impl StockInformation {
         let max_price:i64 = list_of_trades[n-1][0];
         
 
-        DatabaseTradeModel {
+        DataTradeModel {
             first_trade: self.first_trade,
             num_of_trades: self.num_of_trades,
             volume_moved: total_volume as i32,
@@ -77,14 +78,14 @@ impl StockInformation {
     }
 } 
 
-pub struct StockAnalyser {
+pub struct StockAnalyserWeb {
     trade_map: HashMap<String, StockInformation>,
-    postgres_client: PostgresClient,
+    data_web_client: DataWebClient,
 }
 
-impl StockAnalyser {
-    pub fn new(postgres_client: PostgresClient) -> Self {
-        StockAnalyser{ postgres_client: postgres_client, trade_map: HashMap::new() }
+impl StockAnalyserWeb {
+    pub fn new(data_web_client: DataWebClient) -> Self {
+        StockAnalyserWeb{ data_web_client: data_web_client, trade_map: HashMap::new() }
     }
 
     pub fn add_finnhub_data(&mut self, json_data: &String) -> bool {
@@ -103,16 +104,16 @@ impl StockAnalyser {
     fn add_data(&mut self, data_rows: &Vec<FinnhubDataRow>) {
         for data_row in data_rows {
             if !self.trade_map.contains_key(data_row.get_stockname()) {
-                self.trade_map.insert(data_row.get_stockname().clone(), StockInformation::new());
+                self.trade_map.insert(data_row.get_stockname().clone(), StockInformation::new(1000));
             }
 
             let stock_info:&mut StockInformation = self.trade_map.get_mut(data_row.get_stockname()).unwrap();
 
             match (*stock_info).add_trade(&data_row) {
                 Some(v) =>
-                     match self.postgres_client.add_finnhub_data(data_row.get_stockname(), v) {
+                     match self.data_web_client.add_finnhub_data(data_row.get_stockname(), v) {
                         Ok(()) => (),
-                        Err(e) => panic!("Error inserting into database {}", e),
+                        Err(e) => panic!("Error transmitting to server {}", e),
                      },
                 None => return,
             };

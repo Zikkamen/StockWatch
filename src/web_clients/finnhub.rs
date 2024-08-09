@@ -1,18 +1,19 @@
 use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::sync::NetworkStream};
 
 use crate::values_store::credentials_store::CredentialsStore;
-use crate::data_analysis::stock_analysis::StockAnalyser;
+use crate::database_clients::data_web_client::DataWebClient;
+use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 
-pub struct FinnhubClient{
+pub struct FinnhubClient {
     addr: String,
-    stock_analysis: StockAnalyser,
+    stock_analysis_web: StockAnalyserWeb,
 }
 
 impl FinnhubClient {
-    pub fn new(credentials_store: CredentialsStore, stock_analysis: StockAnalyser) -> Self {
+    pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
         FinnhubClient{ 
             addr: format!("wss://ws.finnhub.io?token={}", credentials_store.get_token("Finnhub.io".to_string())),
-            stock_analysis: stock_analysis,
+            stock_analysis_web: stock_analysis_web,
         }
     }
 
@@ -50,8 +51,8 @@ impl FinnhubClient {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
 
-                    match self.stock_analysis.add_finnhub_data(&text) {
-                        true => println!("{}", text),
+                    match self.stock_analysis_web.add_finnhub_data(&text) {
+                        true => (),
                         false => {
                             println!("{}", text);
                             client.send_message(&Message::text("{ \"type\": \"pong\" }")).unwrap();

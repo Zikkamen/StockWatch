@@ -1,18 +1,19 @@
 use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::sync::NetworkStream};
 
 use crate::values_store::credentials_store::CredentialsStore;
-use crate::data_analysis::stock_analysis::StockAnalyser;
+use crate::database_clients::data_web_client::DataWebClient;
+use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 
 pub struct EodhdClient{
     addr: String,
-    stock_analysis: StockAnalyser,
+    stock_analysis_web: StockAnalyserWeb,
 }
 
 impl EodhdClient {
-    pub fn new(credentials_store: CredentialsStore, stock_analysis: StockAnalyser) -> Self {
+    pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
         EodhdClient{ 
             addr: format!("wss://ws.eodhistoricaldata.com/ws/us?api_token={}", credentials_store.get_token("eodhd.com".to_string())),
-            stock_analysis: stock_analysis,
+            stock_analysis_web: stock_analysis_web,
         }
     }
 
@@ -49,7 +50,7 @@ impl EodhdClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
-                    let _ = self.stock_analysis.add_eodhd_data(&text);
+                    let _ = self.stock_analysis_web.add_eodhd_data(&text);
                     println!("{}", text);
                 }
                 OwnedMessage::Close(_) => {
