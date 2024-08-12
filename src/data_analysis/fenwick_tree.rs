@@ -62,7 +62,7 @@ impl FenwickTree {
                     return;
                 }
 
-                node = node.r.as_mut().unwrap();;
+                node = node.r.as_mut().unwrap();
             }
 
             node.v += val;
