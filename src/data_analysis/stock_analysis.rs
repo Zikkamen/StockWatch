@@ -8,6 +8,7 @@ use crate::data_parsers::eodhd_parser::parse_eodhd_data;
 use crate::data_analysis::finnhub_data_row::FinnhubDataRow;
 use crate::database_clients::data_web_client::DataWebClient;
 use crate::database_clients::data_web_client::DataTradeModel;
+use crate::data_analysis::fenwick_tree::FenwickTree;
 
 pub struct StockDataPoint {
     pub timestamp: i64,
@@ -17,8 +18,7 @@ pub struct StockDataPoint {
 
 pub struct StockInformation {
     trades: VecDeque<StockDataPoint>,
-    min_price: VecDeque<i64>,
-    max_price: VecDeque<i64>,
+    fenwick_tree: FenwickTree,
     
     total_trades: i64,
     total_price: i64,
@@ -33,8 +33,7 @@ impl StockInformation {
     pub fn new(time_limit_mil: i64) -> Self {
         StockInformation{ 
             trades: VecDeque::new(), 
-            min_price: VecDeque::new(),
-            max_price: VecDeque::new(),
+            fenwick_tree: FenwickTree::new(),
             total_trades: 0,
             total_price: 0,
             total_volume: 0,
@@ -58,15 +57,7 @@ impl StockInformation {
                         self.total_volume -= v.volume_moved;
                         self.total_trades -= 1;
 
-                        match self.min_price.front() {
-                            Some(mp) => if *mp == v.price { self.min_price.pop_front(); }
-                            None => break,
-                        }
-
-                        match self.max_price.front() {
-                            Some(mp) => if *mp == v.price { self.max_price.pop_front(); }
-                            None => break,
-                        }
+                        self.fenwick_tree.insert(v.price, -v.volume_moved);
 
                         self.trades.pop_front();
                     } else {
@@ -83,28 +74,7 @@ impl StockInformation {
         self.total_volume += data.v;
         self.total_trades += 1;
 
-        while self.min_price.len() > 0 {
-            match self.min_price.front() {
-                Some(mp) => {
-                    if *mp > data.p { self.min_price.pop_front(); } 
-                    else { break; }
-                },
-                None => break,
-            }
-        }
-
-        while self.max_price.len() > 0 {
-            match self.max_price.front() {
-                Some(mp) => {
-                    if *mp < data.p { self.max_price.pop_front(); } 
-                    else { break; }
-                },
-                None => break,
-            }
-        }
-
-        self.min_price.push_back(data.p);
-        self.max_price.push_back(data.p);
+        self.fenwick_tree.insert(data.p, data.v);
     }
 } 
 
@@ -186,16 +156,12 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
                 true => value.total_price / value.total_volume as i64,
                 false => -1,
             };
-            data_trade_model.min_price = match value.min_price.front() {
-                Some(v) => *v,
-                None => -1,
-            };
-            data_trade_model.max_price = match value.max_price.front() {
-                Some(v) => *v,
-                None => -1,
-            };
-            data_trade_model.min_pos = value.min_price.len() as i64;
-            data_trade_model.max_pos = value.max_price.len() as i64;
+            data_trade_model.min_price = value.fenwick_tree.find_min();
+            data_trade_model.max_price = value.fenwick_tree.find_max();
+
+            let (sm_than, sm_eq_than) = value.fenwick_tree.find_num(value.last_price);
+            data_trade_model.min_pos = sm_than;
+            data_trade_model.max_pos = value.total_volume - sm_eq_than;
 
             match data_web_client.add_finnhub_data(&key, data_trade_model) {
                 Ok(_v) => (),
