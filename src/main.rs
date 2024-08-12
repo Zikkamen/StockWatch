@@ -21,6 +21,13 @@ fn main() {
     let data_web_client:DataWebClient = DataWebClient::new("ws://localhost:9003");
     let stock_analysis_web:StockAnalyserWeb = StockAnalyserWeb::new(data_web_client);
 
-    let mut finnhub_client:EodhdClient = EodhdClient::new(credentials_store, stock_analysis_web);
-    finnhub_client.print_hello(&stock_config_list);
+    let use_finnhub_client = false;
+
+    if use_finnhub_client {
+        let mut finnhub_client:FinnhubClient = FinnhubClient::new(credentials_store, stock_analysis_web);
+        finnhub_client.print_hello(&stock_config_list);
+    } else {
+        let mut eodhd_client:EodhdClient = EodhdClient::new(credentials_store, stock_analysis_web);
+        eodhd_client.print_hello(&stock_config_list);
+    }
 }

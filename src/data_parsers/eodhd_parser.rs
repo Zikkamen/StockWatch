@@ -1,4 +1,4 @@
-use crate::data_parsers::finnhub_data_row::FinnhubDataRow;
+use crate::data_analysis::finnhub_data_row::FinnhubDataRow;
 
 /*
     Find the first occurence of data in string and parse the data from the given index
