@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
@@ -109,6 +109,7 @@ impl StockInformation {
 } 
 
 pub struct StockAnalyserWeb {
+    trade_update: Arc<RwLock<HashSet<String>>>,
     trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
 }
 
@@ -117,15 +118,17 @@ impl StockAnalyserWeb {
         let trade_map_arc = Arc::new(RwLock::new(HashMap::new()));
         let trade_map_arc_clone = Arc::clone(&trade_map_arc);
 
-        let stock_analyser = StockAnalyserWeb{ 
-            trade_map: trade_map_arc,
-        };
+        let trade_update_arc = Arc::new(RwLock::new(HashSet::new()));
+        let trade_update_arc_clone = Arc::clone(&trade_update_arc);
 
         thread::spawn(|| {
-            start_thread(trade_map_arc_clone, data_web_client)
+            start_thread(trade_map_arc_clone, trade_update_arc_clone, data_web_client)
         });
 
-        stock_analyser
+        StockAnalyserWeb{ 
+            trade_map: trade_map_arc,
+            trade_update: trade_update_arc,
+        }
     }
 
     pub fn add_finnhub_data(&mut self, json_data: &String) -> bool {
@@ -151,16 +154,28 @@ impl StockAnalyserWeb {
             let stock_info:&mut StockInformation = tmp_trade_map.get_mut(&data_row.s).unwrap();
 
             (*stock_info).add_trade(&data_row);
+            self.trade_update.write().unwrap().insert(data_row.s.clone());
         }
     }
 }
 
-fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>, 
+fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
+                trade_update: Arc<RwLock<HashSet<String>>>,
                 mut data_web_client: DataWebClient) {
     loop {
         thread::sleep(Duration::from_millis(1000));
 
-        for (key, value) in trade_map.read().unwrap().iter() {
+        let trade_keys:HashSet<String> = trade_update.read().unwrap().clone();
+        trade_update.write().unwrap().clear();
+
+        let trade_map_read = trade_map.read().unwrap();
+
+        for key in trade_keys {
+            let value = match trade_map_read.get(&key) {
+                Some(v) => v,
+                None => continue,
+            };
+
             let mut data_trade_model = DataTradeModel::new();
 
             data_trade_model.timestamp = value.last_timestamp;
@@ -182,7 +197,7 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
             data_trade_model.min_pos = value.min_price.len() as i64;
             data_trade_model.max_pos = value.max_price.len() as i64;
 
-            match data_web_client.add_finnhub_data(key, data_trade_model) {
+            match data_web_client.add_finnhub_data(&key, data_trade_model) {
                 Ok(_v) => (),
                 Err(e) => panic!("Error sending data using webclient {}", e),
             };
