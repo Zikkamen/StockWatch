@@ -6,15 +6,19 @@ use std::time::Duration;
 use crate::values_store::credentials_store::CredentialsStore;
 use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 
-pub struct EodhdClient{
+pub struct AlpacaClient{
     addr: String,
     stock_analysis_web: StockAnalyserWeb,
+    secret: String,
+    key: String,
 }
 
-impl EodhdClient {
+impl AlpacaClient {
     pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
-        EodhdClient{ 
-            addr: format!("wss://ws.eodhistoricaldata.com/ws/us?api_token={}", credentials_store.get_token("eodhd.com".to_string())),
+        AlpacaClient { 
+            addr: "wss://stream.data.alpaca.markets/v2/iex".to_string(),
+            key: credentials_store.get_token("alpaca.markets.key".to_string()),
+            secret: credentials_store.get_token("alpaca.markets.secret".to_string()),
             stock_analysis_web: stock_analysis_web,
         }
     }
@@ -23,20 +27,21 @@ impl EodhdClient {
         loop {
             match ClientBuilder::new(&self.addr).unwrap().connect(None) {
                 Ok(mut client) => self.start_websocket(&mut client, list_of_stocks),
-                Err(e) => panic!("Error creating Eodhd Client: {}", e),
+                Err(e) => panic!("Error creating Alpaca Client: {}", e),
             };
-            thread::sleep(Duration::from_millis(1000));
+            thread::sleep(Duration::from_millis(10000));
         }
     }
 
     fn start_websocket(&mut self, 
         client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
         stock_config_list: &Vec<String>) {
+
+        client.send_message(&Message::text(format!("{{\"action\": \"auth\", \"key\": \"{}\", \"secret\": \"{}\"}}", self.key, self.secret)));
         
         for stock in stock_config_list.into_iter() {
-            thread::sleep(Duration::from_millis(50));
-            let message = Message::text(format!("{}\"action\":\"subscribe\",\"symbols\":\"{}\"{}", "{", stock, "}"));
-            
+            let message = Message::text(format!("{{\"action\":\"subscribe\",\"trades\":[\"{}\"]}}", stock));
+
             client.send_message(&message).unwrap();
 
             println!("Subscribed to {}", stock);
@@ -56,7 +61,7 @@ impl EodhdClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
-                    let _ = self.stock_analysis_web.add_eodhd_data(&text);
+                    //let _ = self.stock_analysis_web.add_eodhd_data(&text);
                     println!("{}", text);
                 }
                 OwnedMessage::Close(_) => {
@@ -64,13 +69,9 @@ impl EodhdClient {
                     break;
                 }
                 OwnedMessage::Ping(data) => {
-                    println!("Received Ping. Sending Pong");
                     client.send_message(&OwnedMessage::Pong(data)).unwrap();
                 }
-                _ => {
-                    println!("Sending Ping");
-                    client.send_message(&OwnedMessage::Ping(Vec::new())).unwrap();
-                },
+                _ => (),
             }
         }
     }

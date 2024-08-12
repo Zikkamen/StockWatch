@@ -8,8 +8,8 @@ pub struct CredentialsReader {
 }
 
 impl CredentialsReader {
-    pub fn new() -> Self {
-        CredentialsReader{ file: "credentials/apikeys.xml".to_string() }
+    pub fn new(file_path: String) -> Self {
+        CredentialsReader{ file: file_path }
     }
 
     pub fn get_credentials(&self) -> HashMap<String, String> {
@@ -86,9 +86,18 @@ impl CredentialsReader {
                         match entry_desc_stack.pop() {
                             Some(v) => {
                                 if tmp != v { panic!("Closing line doesn't corespond to open line: {} {} at line: {}", v, tmp, current_line); }
+                                
+                                let mut full_path:String = String::new();
+
+                                for path in entry_desc_stack.iter() {
+                                    full_path.push_str(path);
+                                    full_path.push('.');
+                                }
+
+                                full_path.push_str(&v);
 
                                 match entry_stack.pop() {
-                                    Some(p) => credentials_map.insert(v, p),
+                                    Some(p) => credentials_map.insert(full_path, p),
                                     None => panic!("Couldn't find an entry for open line {}", v),
                                 }
                             
