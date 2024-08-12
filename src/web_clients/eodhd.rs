@@ -1,7 +1,9 @@
 use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::sync::NetworkStream};
 
+use std::thread;
+use std::time::Duration;
+
 use crate::values_store::credentials_store::CredentialsStore;
-use crate::database_clients::data_web_client::DataWebClient;
 use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 
 pub struct EodhdClient{
@@ -18,10 +20,13 @@ impl EodhdClient {
     }
 
     pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
-        match ClientBuilder::new(&self.addr).unwrap().connect(None) {
-            Ok(mut client) => self.start_websocket(&mut client, list_of_stocks),
-            Err(e) => panic!("Error creating Eodhd Client: {}", e),
-        };
+        loop {
+            match ClientBuilder::new(&self.addr).unwrap().connect(None) {
+                Ok(mut client) => self.start_websocket(&mut client, list_of_stocks),
+                Err(e) => panic!("Error creating Eodhd Client: {}", e),
+            };
+            thread::sleep(Duration::from_millis(1000));
+        }
     }
 
     fn start_websocket(&mut self, 

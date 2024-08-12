@@ -1,9 +1,9 @@
 pub struct FinnhubDataRow {
-    c: i64, //Trade Conditions
-    p: i64, //Price in cents
-    s: String, //Stockprice name
-    t: i64, //trade time in unix milliseconds
-    v: i64, //volume
+    pub c: i64, //Trade Conditions
+    pub p: i64, //Price in cents
+    pub s: String, //Stockprice name
+    pub t: i64, //trade time in unix milliseconds
+    pub v: i64, //volume
 }
 
 impl FinnhubDataRow {
@@ -20,26 +20,6 @@ impl FinnhubDataRow {
             "v" => self.set_volume(val),
             _ => (),
         }
-    }
-
-    pub fn get_stockname(&self) -> &String {
-        return &self.s;
-    }
-
-    pub fn get_price(&self) -> &i64 {
-        return &self.p;
-    }
-
-    pub fn get_time(&self) -> &i64 {
-        return &self.t;
-    }
-
-    pub fn get_conditions(&self) -> &i64 {
-        return &self.c;
-    }
-
-    pub fn get_volume(&self) -> &i64 {
-        return &self.v;
     }
 
     fn set_price(&mut self, raw_value: &String) {
