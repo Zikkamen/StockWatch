@@ -32,13 +32,12 @@ impl DataTradeModel {
 
 
 pub struct DataWebClient {
-    addr: String,
     client: Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
 }
 
 impl DataWebClient {
     pub fn new(addr: &str) -> Self {
-        DataWebClient{ addr: addr.to_string(), client: ClientBuilder::new(addr).unwrap().connect(None).expect("Connection") }
+        DataWebClient{ client: ClientBuilder::new(addr).unwrap().connect(None).expect("Connection") }
     }
 
     pub fn add_finnhub_data(&mut self, stock_name: &String, database_model:DataTradeModel) -> Result<(), Box<dyn error::Error + 'static>>{
