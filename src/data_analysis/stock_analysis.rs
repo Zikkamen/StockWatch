@@ -23,7 +23,7 @@ pub struct StockInformation {
     total_trades: i64,
     total_price: i64,
     total_volume: i64,
-    last_price: i64,
+    last_price: VecDeque<(i64, i64)>,
     last_timestamp: i64,
     
     time_limit_mil: i64,
@@ -37,7 +37,7 @@ impl StockInformation {
             total_trades: 0,
             total_price: 0,
             total_volume: 0,
-            last_price: 0,
+            last_price: Vec::new().into(),
             last_timestamp: 0,
             time_limit_mil: time_limit_mil,
         }
@@ -46,8 +46,13 @@ impl StockInformation {
     pub fn add_trade(&mut self, data: &FinnhubDataRow) {
         if data.t > self.last_timestamp {
             self.last_timestamp = data.t;
-            self.last_price = data.p;
         }
+
+        while self.last_price.len() > 0 && self.last_timestamp - self.last_price.front().unwrap().0 > 1000 {
+            self.last_price.pop_front();
+        } 
+
+        self.last_price.push_back((data.t, data.p));
 
         while self.trades.len() > 0 {
             match self.trades.front() {
@@ -148,8 +153,15 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
 
             let mut data_trade_model = DataTradeModel::new();
 
+            let n = value.last_price.len() as i64;
+            let mut last_price_sum: i64 = 0;
+
+            for (_time, price) in value.last_price.clone().iter() {
+                last_price_sum += price;
+            }
+
             data_trade_model.timestamp = value.last_timestamp;
-            data_trade_model.last_price = value.last_price;
+            data_trade_model.last_price = last_price_sum / n;
             data_trade_model.num_of_trades = value.total_trades;
             data_trade_model.volume_moved = value.total_volume;
             data_trade_model.avg_price = match value.total_volume > 0 {
@@ -159,7 +171,7 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
             data_trade_model.min_price = value.fenwick_tree.find_min();
             data_trade_model.max_price = value.fenwick_tree.find_max();
 
-            let (sm_than, sm_eq_than) = value.fenwick_tree.find_num(value.last_price);
+            let (sm_than, sm_eq_than) = value.fenwick_tree.find_num(data_trade_model.last_price);
             data_trade_model.min_pos = sm_than;
             data_trade_model.max_pos = value.total_volume - sm_eq_than;
 
