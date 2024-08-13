@@ -5,34 +5,27 @@ use websocket::{ ClientBuilder, OwnedMessage, Message, sync::Client, stream::syn
 pub struct DataTradeModel {
     pub timestamp:i64,
 
-    pub last_price_volume: f64,
-    pub last_price_trade: f64,
-
-    pub avg_price_volume: f64,
-    pub avg_price_trade: f64,
+    pub min_price: i64,
+    pub bottom_25p: i64,
+    pub median_price: i64,
+    pub top_25p: i64,
+    pub max_price: i64,
 
     pub volume_moved: i64,
     pub num_of_trades: i64,
-
-    pub min_price:i64,
-    pub max_price:i64,
-
-    pub direction: f64,
 }
 
 impl DataTradeModel {
     pub fn new() -> Self {
         DataTradeModel {
             timestamp: 0,
-            last_price_volume: 0.0,
-            last_price_trade: 0.0,
-            avg_price_volume: 0.0,
-            avg_price_trade: 0.0,
+            min_price: 0,
+            bottom_25p: 0,
+            median_price: 0,
+            top_25p: 0,
+            max_price: 0,
             volume_moved: 0,
             num_of_trades: 0,
-            min_price: 0,
-            max_price: 0,
-            direction: 0.0,
         }
     }
 }
@@ -46,7 +39,7 @@ impl DataWebClient {
         DataWebClient{ client: ClientBuilder::new(addr).unwrap().connect(None).expect("Connection") }
     }
 
-    pub fn add_finnhub_data(&mut self, stock_name: &String, database_model:DataTradeModel) -> Result<(), Box<dyn error::Error + 'static>> {    
+    pub fn add_finnhub_data(&mut self, stock_name: &str, database_model:DataTradeModel) -> Result<(), Box<dyn error::Error + 'static>> {    
         match self.client.send_message(&Message::text(&stockdata_to_json(stock_name, database_model))){
             Ok(v) => v,
             Err(e) => panic!("Error sending Message {}", e),
@@ -76,30 +69,26 @@ impl DataWebClient {
     }
 }
 
-fn stockdata_to_json(stock_name: &String, update: DataTradeModel) -> String {
+fn stockdata_to_json(stock_name: &str, update: DataTradeModel) -> String {
     format!("{{
             \"name\": \"{}\",
-            \"last_price_volume\": \"{:.6}\",
-            \"last_price_trade\": {:.6},
-            \"avg_price_volume\": {:.6},
-            \"avg_price_trade\": {:.6},
-            \"min_price\": {},
+            \"min_price\": \"{}\",
+            \"bottom_25p\": {},
+            \"median_price\": {},
+            \"top_25p\": {},
             \"max_price\": {},
             \"volume_moved\": {},
             \"num_of_trades\": {},
-            \"direction\": {:.6},
             \"timestamp\": {}
         }}",
         stock_name,
-        update.last_price_volume / 100.0,
-        update.last_price_trade / 100.0,
-        update.avg_price_volume / 100.0,
-        update.avg_price_trade / 100.0,
-        update.min_price as f64 / 100.0,
+        update.min_price as f64/ 100.0,
+        update.bottom_25p as f64/ 100.0,
+        update.median_price as f64 / 100.0,
+        update.top_25p as f64/ 100.0,
         update.max_price as f64 / 100.0,
         update.volume_moved,
         update.num_of_trades,
-        update.direction,
         update.timestamp,
     )
 }
