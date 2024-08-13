@@ -19,11 +19,12 @@ pub struct StockDataPoint {
 pub struct StockInformation {
     trades: VecDeque<StockDataPoint>,
     fenwick_tree: FenwickTree,
-    
+
+    total_price_volume: i64,
+    total_price_trades: i64,
     total_trades: i64,
-    total_price: i64,
     total_volume: i64,
-    last_price: VecDeque<(i64, i64)>,
+    last_price: VecDeque<(i64, i64, i64, f64)>,
     last_timestamp: i64,
     
     time_limit_mil: i64,
@@ -34,8 +35,9 @@ impl StockInformation {
         StockInformation{ 
             trades: VecDeque::new(), 
             fenwick_tree: FenwickTree::new(),
+            total_price_volume: 0,
+            total_price_trades: 0,
             total_trades: 0,
-            total_price: 0,
             total_volume: 0,
             last_price: Vec::new().into(),
             last_timestamp: 0,
@@ -52,13 +54,17 @@ impl StockInformation {
             self.last_price.pop_front();
         } 
 
-        self.last_price.push_back((data.t, data.p));
+        let (cur_beneath, cur_eq_beneath) = self.fenwick_tree.find_num(data.p);
+        let cur_above = self.total_volume - cur_eq_beneath;
+
+        self.last_price.push_back((data.t, data.p, data.v, (cur_beneath - cur_above) as f64 / self.total_volume as f64));
 
         while self.trades.len() > 0 {
             match self.trades.front() {
                 Some(v) => {
                     if self.last_timestamp - v.timestamp > self.time_limit_mil {
-                        self.total_price -= v.price * v.volume_moved;
+                        self.total_price_trades -= v.price;
+                        self.total_price_volume -= v.price * v.volume_moved;
                         self.total_volume -= v.volume_moved;
                         self.total_trades -= 1;
 
@@ -75,7 +81,8 @@ impl StockInformation {
 
         self.trades.push_back(StockDataPoint{ timestamp: data.t, price:data.p, volume_moved:data.v });
 
-        self.total_price += data.p * data.v;
+        self.total_price_trades += data.p;
+        self.total_price_volume += data.p * data.v;
         self.total_volume += data.v;
         self.total_trades += 1;
 
@@ -151,29 +158,39 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
                 None => continue,
             };
 
-            let mut data_trade_model = DataTradeModel::new();
+            let n = value.last_price.len();
 
-            let n = value.last_price.len() as i64;
-            let mut last_price_sum: i64 = 0;
+            let mut last_price_volume: i64 = 0;
+            let mut last_price_trade: i64 = 0;
+            let mut last_volume_sum: i64 = 0;
+            let mut last_direction_sum: f64 = 0.0;
 
-            for (_time, price) in value.last_price.clone().iter() {
-                last_price_sum += price;
+            for tup in value.last_price.clone().iter() {
+                last_price_trade += tup.1;
+                last_price_volume += tup.1 * tup.2;
+                last_volume_sum += tup.2;
+                last_direction_sum += tup.3 * tup.2 as f64;
             }
 
+            if last_volume_sum == 0 || value.total_volume == 0 || n == 0  || value.total_trades == 0 { continue; }
+
+            let mut data_trade_model = DataTradeModel::new();
+
             data_trade_model.timestamp = value.last_timestamp;
-            data_trade_model.last_price = last_price_sum / n;
-            data_trade_model.num_of_trades = value.total_trades;
+
+            data_trade_model.last_price_volume = last_price_volume as f64 / last_volume_sum as f64;
+            data_trade_model.last_price_trade = last_price_trade as f64 / n as f64;
+
+            data_trade_model.avg_price_volume = value.total_price_volume as f64 / value.total_volume as f64;
+            data_trade_model.avg_price_trade = value.total_price_trades as f64 / value.total_trades as f64;
+
             data_trade_model.volume_moved = value.total_volume;
-            data_trade_model.avg_price = match value.total_volume > 0 {
-                true => value.total_price / value.total_volume as i64,
-                false => -1,
-            };
+            data_trade_model.num_of_trades = value.total_trades;
+            
             data_trade_model.min_price = value.fenwick_tree.find_min();
             data_trade_model.max_price = value.fenwick_tree.find_max();
 
-            let (sm_than, sm_eq_than) = value.fenwick_tree.find_num(data_trade_model.last_price);
-            data_trade_model.min_pos = sm_than;
-            data_trade_model.max_pos = value.total_volume - sm_eq_than;
+            data_trade_model.direction = last_direction_sum / last_volume_sum as f64;
 
             match data_web_client.add_finnhub_data(&key, data_trade_model) {
                 Ok(_v) => (),
