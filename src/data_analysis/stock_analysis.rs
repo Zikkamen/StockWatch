@@ -10,6 +10,8 @@ use crate::database_clients::data_web_client::DataWebClient;
 use crate::database_clients::data_web_client::DataTradeModel;
 use crate::data_analysis::fenwick_tree::FenwickTree;
 
+type TupStockInfo = (StockInformation, StockInformation, StockInformation);
+
 pub struct StockDataPoint {
     pub timestamp: i64,
     pub price: i64,
@@ -20,11 +22,8 @@ pub struct StockInformation {
     trades: VecDeque<StockDataPoint>,
     fenwick_tree: FenwickTree,
 
-    total_price_volume: i64,
-    total_price_trades: i64,
     total_trades: i64,
     total_volume: i64,
-    last_price: VecDeque<(i64, i64, i64, f64)>,
     last_timestamp: i64,
     
     time_limit_mil: i64,
@@ -35,11 +34,8 @@ impl StockInformation {
         StockInformation{ 
             trades: VecDeque::new(), 
             fenwick_tree: FenwickTree::new(),
-            total_price_volume: 0,
-            total_price_trades: 0,
             total_trades: 0,
             total_volume: 0,
-            last_price: Vec::new().into(),
             last_timestamp: 0,
             time_limit_mil: time_limit_mil,
         }
@@ -50,21 +46,10 @@ impl StockInformation {
             self.last_timestamp = data.t;
         }
 
-        while self.last_price.len() > 0 && self.last_timestamp - self.last_price.front().unwrap().0 > 1000 {
-            self.last_price.pop_front();
-        } 
-
-        let (cur_beneath, cur_eq_beneath) = self.fenwick_tree.find_num(data.p);
-        let cur_above = self.total_volume - cur_eq_beneath;
-
-        self.last_price.push_back((data.t, data.p, data.v, (cur_beneath - cur_above) as f64 / self.total_volume as f64));
-
         while self.trades.len() > 0 {
             match self.trades.front() {
                 Some(v) => {
                     if self.last_timestamp - v.timestamp > self.time_limit_mil {
-                        self.total_price_trades -= v.price;
-                        self.total_price_volume -= v.price * v.volume_moved;
                         self.total_volume -= v.volume_moved;
                         self.total_trades -= 1;
 
@@ -79,20 +64,17 @@ impl StockInformation {
             }
         }
 
-        self.trades.push_back(StockDataPoint{ timestamp: data.t, price:data.p, volume_moved:data.v });
-
-        self.total_price_trades += data.p;
-        self.total_price_volume += data.p * data.v;
         self.total_volume += data.v;
         self.total_trades += 1;
 
         self.fenwick_tree.insert(data.p, data.v);
+        self.trades.push_back(StockDataPoint{timestamp: data.t, price: data.p, volume_moved: data.v});
     }
 } 
 
 pub struct StockAnalyserWeb {
     trade_update: Arc<RwLock<HashSet<String>>>,
-    trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
+    trade_map: Arc<RwLock<HashMap<String, TupStockInfo>>>,
 }
 
 impl StockAnalyserWeb {
@@ -129,19 +111,28 @@ impl StockAnalyserWeb {
     fn add_data(&mut self, data_rows: Vec<FinnhubDataRow>) {
         for data_row in data_rows {
             if !self.trade_map.read().unwrap().contains_key(&data_row.s) {
-                self.trade_map.write().unwrap().insert(data_row.s.clone(), StockInformation::new(60_000));
+                self.trade_map.write().unwrap().insert(
+                    data_row.s.clone(), 
+                    (
+                        StockInformation::new(1_000), 
+                        StockInformation::new(10_000), 
+                        StockInformation::new(60_000),
+                    )
+                );
             }
 
             let mut tmp_trade_map = self.trade_map.write().unwrap();
-            let stock_info:&mut StockInformation = tmp_trade_map.get_mut(&data_row.s).unwrap();
+            let stock_info:&mut TupStockInfo = tmp_trade_map.get_mut(&data_row.s).unwrap();
 
-            (*stock_info).add_trade(&data_row);
+            (stock_info.0).add_trade(&data_row);
+            (stock_info.1).add_trade(&data_row);
+            (stock_info.2).add_trade(&data_row);
             self.trade_update.write().unwrap().insert(data_row.s.clone());
         }
     }
 }
 
-fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
+fn start_thread(trade_map: Arc<RwLock<HashMap<String, (StockInformation, StockInformation, StockInformation)>>>,
                 trade_update: Arc<RwLock<HashSet<String>>>,
                 mut data_web_client: DataWebClient) {
     loop {
@@ -158,44 +149,29 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, StockInformation>>>,
                 None => continue,
             };
 
-            let n = value.last_price.len();
-
-            let mut last_price_volume: i64 = 0;
-            let mut last_price_trade: i64 = 0;
-            let mut last_volume_sum: i64 = 0;
-            let mut last_direction_sum: f64 = 0.0;
-
-            for tup in value.last_price.clone().iter() {
-                last_price_trade += tup.1;
-                last_price_volume += tup.1 * tup.2;
-                last_volume_sum += tup.2;
-                last_direction_sum += tup.3 * tup.2 as f64;
-            }
-
-            if last_volume_sum == 0 || value.total_volume == 0 || n == 0  || value.total_trades == 0 { continue; }
-
-            let mut data_trade_model = DataTradeModel::new();
-
-            data_trade_model.timestamp = value.last_timestamp;
-
-            data_trade_model.last_price_volume = last_price_volume as f64 / last_volume_sum as f64;
-            data_trade_model.last_price_trade = last_price_trade as f64 / n as f64;
-
-            data_trade_model.avg_price_volume = value.total_price_volume as f64 / value.total_volume as f64;
-            data_trade_model.avg_price_trade = value.total_price_trades as f64 / value.total_trades as f64;
-
-            data_trade_model.volume_moved = value.total_volume;
-            data_trade_model.num_of_trades = value.total_trades;
-            
-            data_trade_model.min_price = value.fenwick_tree.find_min();
-            data_trade_model.max_price = value.fenwick_tree.find_max();
-
-            data_trade_model.direction = last_direction_sum / last_volume_sum as f64;
-
-            match data_web_client.add_finnhub_data(&key, data_trade_model) {
-                Ok(_v) => (),
-                Err(e) => panic!("Error sending data using webclient {}", e),
-            };
+            process_stock_info(&format!("{} (01 Sec)", &key), &value.0, &mut data_web_client);
+            process_stock_info(&format!("{} (10 Sec)", &key), &value.1, &mut data_web_client);
+            process_stock_info(&format!("{} (60 Sec)", &key), &value.2, &mut data_web_client);
         }
     }
+}
+
+fn process_stock_info(name: &str, value: &StockInformation, data_web_client: &mut DataWebClient) {
+    let mut data_trade_model = DataTradeModel::new();
+
+    data_trade_model.timestamp = value.last_timestamp;
+
+    data_trade_model.min_price = value.fenwick_tree.find(0);
+    data_trade_model.bottom_25p = value.fenwick_tree.find(value.total_volume / 4);
+    data_trade_model.median_price = value.fenwick_tree.find(value.total_volume / 2);
+    data_trade_model.top_25p = value.fenwick_tree.find(3 * value.total_volume / 4);
+    data_trade_model.max_price = value.fenwick_tree.find(value.total_volume);
+
+    data_trade_model.volume_moved = value.total_volume;
+    data_trade_model.num_of_trades = value.total_trades;
+
+    match data_web_client.add_finnhub_data(name, data_trade_model) {
+        Ok(_v) => (),
+        Err(e) => panic!("Error sending data using webclient {}", e),
+    };
 }

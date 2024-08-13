@@ -69,18 +69,23 @@ impl FenwickTree {
         }
     }
 
-    pub fn find_min(&self) -> i64 {
+    pub fn find(&self, x: i64) -> i64 {
         let mut node = self.root.as_ref();
-        let mut min_val: i64 = 0;
+        let mut val: i64 = 0;
+        let mut cur_sum = 0;
 
         for i in (0..64).rev() {
             if node.l.is_some() {
-                node = node.l.as_ref().unwrap();
-                continue;
+                if node.l.as_ref().unwrap().v + cur_sum > x  || node.r.is_none() {
+                    node = node.l.as_ref().unwrap();
+                    continue;
+                }
+
+                cur_sum += node.l.as_ref().unwrap().v;
             }
 
             if node.r.is_some() {
-                min_val += 1 << i;
+                val += 1 << i;
                 node = node.r.as_ref().unwrap();
                 continue;
             }
@@ -88,28 +93,6 @@ impl FenwickTree {
             break;
         }
 
-        min_val
-    }
-
-    pub fn find_max(&self) -> i64 {
-        let mut node = self.root.as_ref();
-        let mut max_val: i64 = 0;
-
-        for i in (0..64).rev() {
-            if node.r.is_some() {
-                max_val += 1 << i;
-                node = node.r.as_ref().unwrap();
-                continue;
-            }
-
-            if node.l.is_some() {
-                node = node.l.as_ref().unwrap();
-                continue;
-            }
-
-            break;
-        }
-
-        max_val
+        val
     }
 }
