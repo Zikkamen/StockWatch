@@ -33,6 +33,15 @@ impl EodhdClient {
         client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
         stock_config_list: &Vec<String>) {
         
+        let message:OwnedMessage = match client.recv_message() {
+            Ok(p) => p,
+            Err(e) => {
+                println!("Error receiving message from Eodhd {}. Closing websocket", e);
+                let _ client.send_message(&Message::close());\
+                return;
+            }
+        }
+        
         for stock in stock_config_list.into_iter() {
             thread::sleep(Duration::from_millis(50));
             let message = Message::text(format!("{}\"action\":\"subscribe\",\"symbols\":\"{}\"{}", "{", stock, "}"));
