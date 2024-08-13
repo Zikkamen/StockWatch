@@ -1,35 +1,41 @@
 use std::{ error };
 
-use websocket::{ ClientBuilder, Message, sync::Client, stream::sync::NetworkStream};
+use websocket::{ ClientBuilder, OwnedMessage, Message, sync::Client, stream::sync::NetworkStream};
 
 pub struct DataTradeModel {
     pub timestamp:i64,
-    pub last_price: i64,
-    pub num_of_trades: i64,
+
+    pub last_price_volume: f64,
+    pub last_price_trade: f64,
+
+    pub avg_price_volume: f64,
+    pub avg_price_trade: f64,
+
     pub volume_moved: i64,
-    pub avg_price:i64,
+    pub num_of_trades: i64,
+
     pub min_price:i64,
     pub max_price:i64,
-    pub min_pos: i64,
-    pub max_pos: i64,
+
+    pub direction: f64,
 }
 
 impl DataTradeModel {
     pub fn new() -> Self {
         DataTradeModel {
             timestamp: 0,
-            last_price: 0,
-            num_of_trades: 0,
+            last_price_volume: 0.0,
+            last_price_trade: 0.0,
+            avg_price_volume: 0.0,
+            avg_price_trade: 0.0,
             volume_moved: 0,
-            avg_price: 0,
+            num_of_trades: 0,
             min_price: 0,
             max_price: 0,
-            min_pos: 0,
-            max_pos: 0,
+            direction: 0.0,
         }
     }
 }
-
 
 pub struct DataWebClient {
     client: Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
@@ -40,8 +46,7 @@ impl DataWebClient {
         DataWebClient{ client: ClientBuilder::new(addr).unwrap().connect(None).expect("Connection") }
     }
 
-    pub fn add_finnhub_data(&mut self, stock_name: &String, database_model:DataTradeModel) -> Result<(), Box<dyn error::Error + 'static>>{
-        
+    pub fn add_finnhub_data(&mut self, stock_name: &String, database_model:DataTradeModel) -> Result<(), Box<dyn error::Error + 'static>> {    
         match self.client.send_message(&Message::text(&stockdata_to_json(stock_name, database_model))){
             Ok(v) => v,
             Err(e) => panic!("Error sending Message {}", e),
@@ -49,30 +54,52 @@ impl DataWebClient {
 
         Ok(())
     }
+
+    pub fn get_stocklist(&mut self) -> Vec<String> {
+        let message:OwnedMessage = match self.client.recv_message() {
+            Ok(p) => p,
+            Err(e) => {
+                panic!("Error receiving message {} \n Closing Client", e);
+            },
+        };
+
+        match message {
+            OwnedMessage::Text(txt) => {
+                let text: String = txt.parse().unwrap();
+
+                return text.split('|').map(|s| s.to_string()).filter(|s| s.len() > 0).collect();
+            }
+            _ => {
+                panic!("Received wrong message");
+            },
+        }
+    }
 }
 
 fn stockdata_to_json(stock_name: &String, update: DataTradeModel) -> String {
     format!("{{
             \"name\": \"{}\",
-            \"last_price\": \"{}\",
-            \"avg_price\": {},
+            \"last_price_volume\": \"{:.6}\",
+            \"last_price_trade\": {:.6},
+            \"avg_price_volume\": {:.6},
+            \"avg_price_trade\": {:.6},
             \"min_price\": {},
             \"max_price\": {},
             \"volume_moved\": {},
             \"num_of_trades\": {},
-            \"min_pos\": {},
-            \"max_pos\": {},
-            \"time\": {}
+            \"direction\": {:.6},
+            \"timestamp\": {}
         }}",
         stock_name,
-        update.last_price as f64 / 100.0,
-        update.avg_price as f64 / 100.0,
+        update.last_price_volume / 100.0,
+        update.last_price_trade / 100.0,
+        update.avg_price_volume / 100.0,
+        update.avg_price_trade / 100.0,
         update.min_price as f64 / 100.0,
         update.max_price as f64 / 100.0,
         update.volume_moved,
         update.num_of_trades,
-        update.min_pos,
-        update.max_pos,
+        update.direction,
         update.timestamp,
     )
 }
