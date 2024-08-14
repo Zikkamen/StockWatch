@@ -51,7 +51,6 @@ impl EodhdClient {
             println!("Subscribed to {}", stock);
         }
         
-
         loop {
             let message:OwnedMessage = match client.recv_message() {
                 Ok(p) => p,
