@@ -22,6 +22,7 @@ pub struct StockInformation {
     trades: VecDeque<StockDataPoint>,
     fenwick_tree: FenwickTree,
 
+    total_price: i64,
     total_trades: i64,
     total_volume: i64,
     last_timestamp: i64,
@@ -34,6 +35,7 @@ impl StockInformation {
         StockInformation{ 
             trades: VecDeque::new(), 
             fenwick_tree: FenwickTree::new(),
+            total_price: 0,
             total_trades: 0,
             total_volume: 0,
             last_timestamp: 0,
@@ -52,6 +54,7 @@ impl StockInformation {
                     if self.last_timestamp - v.timestamp > self.time_limit_mil {
                         self.total_volume -= v.volume_moved;
                         self.total_trades -= 1;
+                        self.total_price -= v.price * v.volume_moved;
 
                         self.fenwick_tree.insert(v.price, -v.volume_moved);
 
@@ -64,6 +67,7 @@ impl StockInformation {
             }
         }
 
+        self.total_price += data.v * data.p;
         self.total_volume += data.v;
         self.total_trades += 1;
 
@@ -135,8 +139,18 @@ impl StockAnalyserWeb {
 fn start_thread(trade_map: Arc<RwLock<HashMap<String, (StockInformation, StockInformation, StockInformation)>>>,
                 trade_update: Arc<RwLock<HashSet<String>>>,
                 mut data_web_client: DataWebClient) {
+    let mut open_price_map:HashMap<(String, usize), VecDeque<f64>> = HashMap::new();
+
     loop {
         thread::sleep(Duration::from_millis(1000));
+
+        for (key, value) in &mut open_price_map {
+            value.push_back(*value.back().unwrap());
+
+            if value.len() > key.1 + 1 {
+                value.pop_front().expect("Interval to be > 0");
+            }
+        }
 
         let trade_keys:HashSet<String> = trade_update.read().unwrap().clone();
         trade_update.write().unwrap().clear();
@@ -149,28 +163,48 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, (StockInformation, StockIn
                 None => continue,
             };
 
-            process_stock_info(&format!("{} (01 Sec)", &key), &value.0, &mut data_web_client);
-            process_stock_info(&format!("{} (10 Sec)", &key), &value.1, &mut data_web_client);
-            process_stock_info(&format!("{} (60 Sec)", &key), &value.2, &mut data_web_client);
+            process_stock_info(&key, 1, &value.0, &mut data_web_client, &mut open_price_map);
+            process_stock_info(&key, 10, &value.1, &mut data_web_client, &mut open_price_map);
+            process_stock_info(&key, 60, &value.2, &mut data_web_client, &mut open_price_map);
         }
     }
 }
 
-fn process_stock_info(name: &str, value: &StockInformation, data_web_client: &mut DataWebClient) {
+fn process_stock_info(
+        name: &str, 
+        stock_interval: usize, 
+        value: &StockInformation, 
+        data_web_client: &mut DataWebClient,
+        open_price_map: &mut HashMap<(String, usize), VecDeque<f64>>,
+    ) {
     let mut data_trade_model = DataTradeModel::new();
 
     data_trade_model.timestamp = value.last_timestamp;
 
+    data_trade_model.avg_price = value.total_price as f64 / value.total_volume as f64;
     data_trade_model.min_price = value.fenwick_tree.find(0);
-    data_trade_model.bottom_25p = value.fenwick_tree.find(value.total_volume / 4);
-    data_trade_model.median_price = value.fenwick_tree.find(value.total_volume / 2);
-    data_trade_model.top_25p = value.fenwick_tree.find(3 * value.total_volume / 4);
     data_trade_model.max_price = value.fenwick_tree.find(value.total_volume);
 
     data_trade_model.volume_moved = value.total_volume;
     data_trade_model.num_of_trades = value.total_trades;
 
-    match data_web_client.add_finnhub_data(name, data_trade_model) {
+    let key = (name.to_string(), stock_interval);
+
+    match open_price_map.get_mut(&key) {
+        Some(v) => {
+            if v.len() == stock_interval + 1 {
+                data_trade_model.avg_price_open = *v.front().unwrap();
+            }
+
+            v.pop_back();
+            v.push_back(data_trade_model.avg_price);
+        },
+        None => {
+            open_price_map.insert(key, VecDeque::from_iter([data_trade_model.avg_price]));
+        }
+    };
+
+    match data_web_client.add_finnhub_data(name, stock_interval, data_trade_model) {
         Ok(_v) => (),
         Err(e) => panic!("Error sending data using webclient {}", e),
     };
