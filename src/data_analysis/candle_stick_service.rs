@@ -120,7 +120,10 @@ impl CandleStickService {
         CandleStickService {
             cs_graph_main: CandleStickGraph::new(1, stock_name.clone()),
             cs_graphs: vec![
-                CandleStickGraph::new(10, stock_name.clone())
+                CandleStickGraph::new(10, stock_name.clone()),
+                CandleStickGraph::new(60, stock_name.clone()),
+                CandleStickGraph::new(300, stock_name.clone()),
+                CandleStickGraph::new(600, stock_name.clone())
             ],
             stock_name: stock_name,
         }
