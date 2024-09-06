@@ -1,3 +1,6 @@
+use chrono::DateTime;
+
+#[derive(Debug)]
 pub struct FinnhubDataRow {
     pub c: i64, //Trade Conditions
     pub p: i64, //Price in cents
@@ -18,6 +21,16 @@ impl FinnhubDataRow {
             "s" => self.set_stockname(val),
             "t" => self.set_time(val),
             "v" => self.set_volume(val),
+            _ => (),
+        }
+    }
+
+    pub fn set_alpaca_data(&mut self, key: &String, val: &String) {
+        match key.as_str() {
+            "p" => self.set_price(val),
+            "S" => self.set_stockname(val),
+            "t" => self.set_alpaca_time(val),
+            "s" => self.set_volume(val),
             _ => (),
         }
     }
@@ -56,6 +69,17 @@ impl FinnhubDataRow {
 
     fn set_time(&mut self, raw_value: &String) {
         self.t = raw_value.parse::<i64>().unwrap();
+    }
+
+    fn set_alpaca_time(&mut self, raw_value: &String) {
+        let dt = DateTime::parse_from_rfc3339(raw_value);
+
+        let parsed_dt = match dt {
+            Ok(v) => v,
+            Err(e) => { println!("Error parsing date {e}"); return; },
+        };
+
+        self.t = parsed_dt.timestamp_millis();
     }
 
     fn set_volume(&mut self, raw_value: &String) {

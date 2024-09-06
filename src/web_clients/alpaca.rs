@@ -37,12 +37,12 @@ impl AlpacaClient {
         client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
         stock_config_list: &Vec<String>) {
 
-        client.send_message(&Message::text(format!("{{\"action\": \"auth\", \"key\": \"{}\", \"secret\": \"{}\"}}", self.key, self.secret)));
+        let _ = client.send_message(&Message::text(format!("{{\"action\": \"auth\", \"key\": \"{}\", \"secret\": \"{}\"}}", self.key, self.secret)));
         
         for stock in stock_config_list.into_iter() {
             let message = Message::text(format!("{{\"action\":\"subscribe\",\"trades\":[\"{}\"]}}", stock));
 
-            client.send_message(&message).unwrap();
+            let _ = client.send_message(&message).unwrap();
 
             println!("Subscribed to {}", stock);
         }
@@ -61,7 +61,7 @@ impl AlpacaClient {
             match message {
                 OwnedMessage::Text(txt) => {
                     let text: String = txt.parse().unwrap();
-                    //let _ = self.stock_analysis_web.add_eodhd_data(&text);
+                    let _ = self.stock_analysis_web.add_alpaca_data(&text);
                     println!("{}", text);
                 }
                 OwnedMessage::Close(_) => {
