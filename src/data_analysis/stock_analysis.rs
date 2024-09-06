@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use crate::data_parsers::finnhub_parser::parse_finnhub_data;
 use crate::data_parsers::eodhd_parser::parse_eodhd_data;
+use crate::data_parsers::alpaca_parser::parse_alpaca_data;
 
 use crate::database_clients::data_web_client::DataWebClient;
 use crate::database_clients::data_web_client::DataTradeModel;
@@ -41,6 +42,10 @@ impl StockAnalyserWeb {
 
     pub fn add_eodhd_data(&mut self, json_data: &String) {
         self.add_data(parse_eodhd_data(json_data));
+    }
+
+    pub fn add_alpaca_data(&mut self, json_data: &String) {
+        self.add_data(parse_alpaca_data(json_data));
     }
 
     fn add_data(&mut self, data_rows: Vec<FinnhubDataRow>) {
