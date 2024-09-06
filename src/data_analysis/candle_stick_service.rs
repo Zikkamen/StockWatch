@@ -102,6 +102,7 @@ impl CandleStickGraph {
         };
         self.total_price = 0;
         self.total_volume = 0;
+        self.total_trades = 0;
         self.min_price = std::i64::MAX;
         self.max_price = std::i64::MIN;
         self.current_interval = 0;
