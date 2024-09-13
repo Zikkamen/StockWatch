@@ -79,8 +79,8 @@ fn stockdata_to_json(update: DataTradeModel) -> String {
             \"sn\": \"{}\",
             \"ap\": \"{:.6}\",
             \"op\": {:.6},
-            \"mn\": {},
-            \"mx\": {},
+            \"mn\": {:.6},
+            \"mx\": {:.6},
             \"vm\": {},
             \"nt\": {},
             \"t\": {}
