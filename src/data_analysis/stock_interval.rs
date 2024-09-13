@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 type TupStockInfo = (StockInformation, StockInformation, StockInformation);
 
 pub struct StockDataPoint {
@@ -68,9 +70,17 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, (StockInformation, StockIn
                 trade_update: Arc<RwLock<HashSet<String>>>,
                 mut data_web_client: DataWebClient) {
     let mut open_price_map:HashMap<(String, usize), VecDeque<f64>> = HashMap::new();
+    
+    let target_time = SystemTime::now();
+    target_time.add(Duration::from_millis(1000));
 
     loop {
-        thread::sleep(Duration::from_millis(1000));
+        match target_time.duration_since(&SystemTime::now()) {
+            Ok(v) => thread::sleep(v),
+            Err(_) => (),
+        };
+
+        target_time.add(Duration::from_millis(1000));
 
         for (key, value) in &mut open_price_map {
             value.push_back(*value.back().unwrap());
