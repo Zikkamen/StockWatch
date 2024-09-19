@@ -1,7 +1,7 @@
 use std::collections::{HashMap};
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::ops::Add;
+use std::ops::AddAssign;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 use crate::data_parsers::finnhub_parser::parse_finnhub_data;
@@ -67,9 +67,11 @@ impl StockAnalyserWeb {
 }
 
 fn start_thread(trade_map: Arc<RwLock<HashMap<String, CandleStickService>>>, mut data_web_client: DataWebClient) {
-    let target_time = SystemTime::now();
+    let mut target_time = SystemTime::now();
     
     loop {
+        target_time.add_assign(Duration::from_millis(1000));
+
         match target_time.duration_since(SystemTime::now()) {
             Ok(v) => thread::sleep(v),
             Err(_) => (),
@@ -77,8 +79,6 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, CandleStickService>>>, mut
 
         let mut list_of_trades:Vec<DataTradeModel> = Vec::new();
         let base_time = (target_time.duration_since(UNIX_EPOCH).expect("Time Went backwards").as_millis() as i64) - 1000;
-
-        let target_time = target_time.add(Duration::from_millis(1000));
 
         for (_key, value) in trade_map.write().unwrap().iter_mut() {
             for mut trade in value.get_trades().into_iter() {
