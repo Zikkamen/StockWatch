@@ -113,7 +113,6 @@ impl CandleStickGraph {
 pub struct CandleStickService {
     cs_graph_main: CandleStickGraph,
     cs_graphs: Vec<CandleStickGraph>,
-    stock_name: String,
 }
 
 impl CandleStickService {
@@ -126,7 +125,6 @@ impl CandleStickService {
                 CandleStickGraph::new(300, stock_name.clone()),
                 CandleStickGraph::new(600, stock_name.clone())
             ],
-            stock_name: stock_name,
         }
     }
 

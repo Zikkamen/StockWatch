@@ -1,7 +1,8 @@
 use std::collections::{HashMap};
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::Duration;
+use std::ops::Add;
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 use crate::data_parsers::finnhub_parser::parse_finnhub_data;
 use crate::data_parsers::eodhd_parser::parse_eodhd_data;
@@ -66,13 +67,22 @@ impl StockAnalyserWeb {
 }
 
 fn start_thread(trade_map: Arc<RwLock<HashMap<String, CandleStickService>>>, mut data_web_client: DataWebClient) {
+    let target_time = SystemTime::now();
+    let _ = target_time.add(Duration::from_millis(1000));
+    
     loop {
-        thread::sleep(Duration::from_millis(1000));
+        match target_time.duration_since(SystemTime::now()) {
+            Ok(v) => thread::sleep(v),
+            Err(_) => (),
+        };
 
         let mut list_of_trades:Vec<DataTradeModel> = Vec::new();
+        let base_time = (UNIX_EPOCH.duration_since(target_time).expect("Time Went forwards").as_millis() as i64) - 1000;
 
-        for (key, value) in trade_map.write().unwrap().iter_mut() {
-            for trade in value.get_trades().into_iter() {
+        for (_key, value) in trade_map.write().unwrap().iter_mut() {
+            for mut trade in value.get_trades().into_iter() {
+                trade.timestamp = trade.timestamp.max(base_time);
+
                 list_of_trades.push(trade);
             }
         }
