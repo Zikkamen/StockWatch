@@ -1,7 +1,13 @@
-use websocket::{ ClientBuilder, Message, OwnedMessage, sync::Client, stream::sync::NetworkStream};
-
 use std::thread;
 use std::time::Duration;
+use std::net::TcpStream;
+
+use tungstenite::{
+    connect,
+    Message,
+    WebSocket,
+    stream::MaybeTlsStream
+};
 
 use crate::values_store::credentials_store::CredentialsStore;
 use crate::data_analysis::stock_analysis::StockAnalyserWeb;
@@ -25,53 +31,57 @@ impl AlpacaClient {
 
     pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
         loop {
-            match ClientBuilder::new(&self.addr).unwrap().connect(None) {
-                Ok(mut client) => self.start_websocket(&mut client, list_of_stocks),
-                Err(e) => panic!("Error creating Alpaca Client: {}", e),
+            let (client, _response) = match connect(self.addr.clone()) {
+                Ok(v) => v,
+                Err(e) => panic!("Error creating Eodhd Client: {}", e),
             };
-            thread::sleep(Duration::from_millis(10000));
+
+            self.start_websocket(client, list_of_stocks);
+
+            thread::sleep(Duration::from_millis(1000));
         }
     }
 
-    fn start_websocket(&mut self, 
-        client: &mut Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
-        stock_config_list: &Vec<String>) {
-
-        let _ = client.send_message(&Message::text(format!("{{\"action\": \"auth\", \"key\": \"{}\", \"secret\": \"{}\"}}", self.key, self.secret)));
+    fn start_websocket(&mut self, mut client: WebSocket<MaybeTlsStream<TcpStream>>, stock_config_list: &Vec<String>) {
+        let _ = client.send(Message::Text(format!("{{\"action\": \"auth\", \"key\": \"{}\", \"secret\": \"{}\"}}", self.key, self.secret)));
         
         for stock in stock_config_list.into_iter() {
-            let message = Message::text(format!("{{\"action\":\"subscribe\",\"trades\":[\"{}\"]}}", stock));
+            let message = Message::Text(format!("{{\"action\":\"subscribe\",\"trades\":[\"{}\"]}}", stock));
 
-            let _ = client.send_message(&message).unwrap();
+            let _ = client.send(message).unwrap();
 
             println!("Subscribed to {}", stock);
         }
         
 
         loop {
-            let message:OwnedMessage = match client.recv_message() {
+            let msg = match client.read() {
                 Ok(p) => p,
                 Err(e) => {
                     println!("Error receiving message {} \n Closing Client", e);
-                    let _ = client.send_message(&Message::close());
+                    let _ = client.send(Message::Close(None));
                     break;
                 },
             };
 
-            match message {
-                OwnedMessage::Text(txt) => {
-                    let text: String = txt.parse().unwrap();
+            match msg {
+                msg @ Message::Text(_) => {
+                    let text: String = msg.into_text().unwrap();
                     let _ = self.stock_analysis_web.add_alpaca_data(&text);
                     println!("{}", text);
                 }
-                OwnedMessage::Close(_) => {
-                    let _ = client.send_message(&Message::close());
+                msg @ Message::Close(_) => {
+                    let _ = client.send(Message::Close(None));
                     break;
                 }
-                OwnedMessage::Ping(data) => {
-                    client.send_message(&OwnedMessage::Pong(data)).unwrap();
+                msg @ Message::Ping(_) => {
+                    println!("Received Ping. Sending Pong");
+                    client.send(Message::Pong(Vec::new())).unwrap();
                 }
-                _ => (),
+                _ => {
+                    println!("Sending Ping");
+                    client.send(Message::Ping(Vec::new())).unwrap();
+                },
             }
         }
     }

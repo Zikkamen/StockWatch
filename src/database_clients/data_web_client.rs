@@ -1,6 +1,12 @@
-use std::{ error };
+use std::{ error, net::TcpStream };
 
-use websocket::{ ClientBuilder, OwnedMessage, Message, sync::Client, stream::sync::NetworkStream};
+use tungstenite::{
+    connect,
+    Message,
+    WebSocket,
+    stream::MaybeTlsStream
+};
+
 
 pub struct DataTradeModel {
     pub timestamp:i64,
@@ -35,16 +41,18 @@ impl DataTradeModel {
 }
 
 pub struct DataWebClient {
-    client: Client<Box<(dyn NetworkStream + std::marker::Send + 'static)>>,
+    client: WebSocket<MaybeTlsStream<TcpStream>>,
 }
 
 impl DataWebClient {
     pub fn new(addr: &str) -> Self {
-        DataWebClient{ client: ClientBuilder::new(addr).unwrap().connect(None).expect("Connection") }
+        let (mut client, _response) = connect(addr).unwrap();
+
+        DataWebClient{ client: client }
     }
 
     pub fn add_finnhub_data(&mut self, database_model:DataTradeModel) -> Result<(), Box<dyn error::Error + 'static>> {    
-        match self.client.send_message(&Message::text(&stockdata_to_json(database_model))){
+        match self.client.send(Message::text(&stockdata_to_json(database_model))){
             Ok(v) => v,
             Err(e) => panic!("Error sending Message {}", e),
         }
@@ -53,16 +61,16 @@ impl DataWebClient {
     }
 
     pub fn get_stocklist(&mut self) -> Vec<String> {
-        let message:OwnedMessage = match self.client.recv_message() {
+        let msg = match self.client.read() {
             Ok(p) => p,
             Err(e) => {
                 panic!("Error receiving message {} \n Closing Client", e);
             },
         };
 
-        match message {
-            OwnedMessage::Text(txt) => {
-                let text: String = txt.parse().unwrap();
+        match msg {
+            msg @ Message::Text(_) => {
+                let text: String = msg.into_text().unwrap();
 
                 return text.split('|').map(|s| s.to_string()).filter(|s| s.len() > 0).collect();
             }
