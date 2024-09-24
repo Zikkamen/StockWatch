@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use crate::data_parsers::finnhub_parser::parse_finnhub_data;
 use crate::data_parsers::eodhd_parser::parse_eodhd_data;
 use crate::data_parsers::alpaca_parser::parse_alpaca_data;
+use crate::data_parsers::twelve_parser::parse_twelve_data;
 
 use crate::database_clients::data_web_client::DataWebClient;
 use crate::database_clients::data_web_client::DataTradeModel;
@@ -49,19 +50,42 @@ impl StockAnalyserWeb {
         self.add_data(parse_alpaca_data(json_data));
     }
 
-    fn add_data(&mut self, data_rows: Vec<FinnhubDataRow>) {
-        for data_row in data_rows {
-            if !self.trade_map.read().unwrap().contains_key(&data_row.s) {
-                self.trade_map.write().unwrap().insert(
-                    data_row.s.clone(),
-                    CandleStickService::new(data_row.s.clone()),
-                );
+    pub fn add_twelve_data(&mut self, json_data: &String, last_data: &mut HashMap<String, i64>) {
+        let mut twelve_data = parse_twelve_data(json_data);
+
+        if twelve_data.t != 0 {
+            let prev_volume = match last_data.get(&twelve_data.s) {
+                Some(v) => *v,
+                None => twelve_data.v,
+            };
+
+            last_data.insert(twelve_data.s.clone(), twelve_data.v);
+
+            if twelve_data.v >= prev_volume {
+                twelve_data.v -= prev_volume;
             }
 
-            let mut tmp_trade_map = self.trade_map.write().unwrap();
-            let candle_stick_service:&mut CandleStickService = tmp_trade_map.get_mut(&data_row.s).unwrap();
+            self.add_single_data(twelve_data);
+        }
+    }
 
-            candle_stick_service.add_trade(&data_row);
+    fn add_single_data(&mut self, data_row: FinnhubDataRow) {
+        if !self.trade_map.read().unwrap().contains_key(&data_row.s) {
+            self.trade_map.write().unwrap().insert(
+                data_row.s.clone(),
+                CandleStickService::new(data_row.s.clone()),
+            );
+        }
+
+        let mut tmp_trade_map = self.trade_map.write().unwrap();
+        let candle_stick_service:&mut CandleStickService = tmp_trade_map.get_mut(&data_row.s).unwrap();
+
+        candle_stick_service.add_trade(&data_row);
+    }
+
+    fn add_data(&mut self, data_rows: Vec<FinnhubDataRow>) {
+        for data_row in data_rows {
+            self.add_single_data(data_row);
         }
     }
 }
