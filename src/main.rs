@@ -21,7 +21,7 @@ fn main() {
 
     let stock_analysis_web:StockAnalyserWeb = StockAnalyserWeb::new(data_web_client);
 
-    let client_selection:usize = 0;
+    let client_selection:usize = 2;
 
     if client_selection == 0 {
         let mut finnhub_client:FinnhubClient = FinnhubClient::new(credentials_store, stock_analysis_web);
