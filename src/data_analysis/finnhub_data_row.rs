@@ -35,6 +35,16 @@ impl FinnhubDataRow {
         }
     }
 
+    pub fn set_twelve_data(&mut self, key: &String, val: &String) {
+        match key.as_str() {
+            "price" => self.set_price(val),
+            "symbol" => self.set_stockname(val),
+            "timestamp" => self.set_time(val),
+            "day_volume" => self.set_volume(val),
+            _ => (),
+        }
+    }
+
     fn set_price(&mut self, raw_value: &String) {
         match raw_value.parse::<f64>() {
             Ok(v) => self.p = (v * 100.0) as i64,
