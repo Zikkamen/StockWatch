@@ -2,12 +2,16 @@ use std::thread;
 use std::time::Duration;
 use std::net::TcpStream;
 use std::collections::HashMap;
+use std::io::{Error, ErrorKind};
+
+use native_tls::TlsConnector;
+use native_tls::TlsStream;
 
 use tungstenite::{
-    connect,
     Message,
     WebSocket,
-    stream::MaybeTlsStream
+    client,
+    Error::Io,
 };
 
 use crate::values_store::credentials_store::CredentialsStore;
@@ -28,7 +32,27 @@ impl TwelveClient {
 
     pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
         loop {
-            let (client, _response) = match connect(self.addr.clone()) {
+            let connector = TlsConnector::new().unwrap();
+
+            let stream = match TcpStream::connect("ws.twelvedata.com:443") {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("Error connecting TcpStream: {}", e);
+                    thread::sleep(Duration::from_millis(20_000));
+                    continue;
+                },
+            };
+            
+            let stream = match connector.connect("ws.twelvedata.com", stream) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("Error establishing TLS Connection: {}", e);
+                    thread::sleep(Duration::from_millis(20_000));
+                    continue;
+                },
+            };
+
+            let (mut client, _response) = match client(self.addr.clone(), stream) {
                 Ok(v) => v,
                 Err(e) => {
                     println!("Error creating Twelve Data Client: {}", e);
@@ -37,13 +61,15 @@ impl TwelveClient {
                 },
             };
 
+            let _ = client.get_mut().get_mut().set_nonblocking(true);
+
             self.start_websocket(client, list_of_stocks);
 
             thread::sleep(Duration::from_millis(1000));
         }
     }
 
-    fn start_websocket(&mut self, mut client: WebSocket<MaybeTlsStream<TcpStream>>, stock_config_list: &Vec<String>) {
+    fn start_websocket(&mut self, mut client: WebSocket<TlsStream<TcpStream>>, stock_config_list: &Vec<String>) {
         let mut stock_list = String::new();
         
         for stock in stock_config_list.into_iter() {
@@ -57,18 +83,42 @@ impl TwelveClient {
         println!("{}", format!("{{\"action\":\"subscribe\",\"params\"{{\"symbols\":\"{}\"}}}}", stock_list));
 
         let msg = Message::Text(format!("{{\"action\":\"subscribe\",\"params\": {{\"symbols\":\"{}\"}}}}", stock_list));
-        client.send(msg).unwrap();
+        let _ = client.send(msg).unwrap();
+        
         println!("Subscribed to {}", stock_list);
 
         let mut last_data = HashMap::<String, i64>::new();
+        let mut last_ping: u32 = 0;
         
         loop {
+            if last_ping >= 200 {
+                let _ = client.send(Message::Text("{\"action\": \"heartbeat\"}".to_string()));
+                last_ping = 0;
+            }
+
+            last_ping += 1;
+
             let msg = match client.read() {
                 Ok(p) => p,
-                Err(e) => {
-                    println!("Error receiving message {} \n Closing Client", e);
-                    let _ = client.send(Message::Close(None));
-                    break;
+                Err(e) => match e {
+                    Io(ref error) => {
+                        match error.kind() {
+                            ErrorKind::WouldBlock => {
+                                thread::sleep(Duration::from_millis(50));
+                                continue;
+                            },
+                            _ => {
+                                println!("Error receiving message {} \n Closing Client", e);
+                                let _ = client.send(Message::Close(None));
+                                break;
+                            }
+                        }
+                    },
+                    _ => {
+                        println!("Error receiving message {} \n Closing Client", e);
+                        let _ = client.send(Message::Close(None));
+                        break;
+                    },
                 },
             };
 
