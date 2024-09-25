@@ -71,11 +71,11 @@ impl EodhdClient {
                     let _ = self.stock_analysis_web.add_eodhd_data(&text);
                     println!("{}", text);
                 }
-                msg @ Message::Close(_) => {
+                _msg @ Message::Close(_) => {
                     let _ = client.send(Message::Close(None));
                     break;
                 }
-                msg @ Message::Ping(_) => {
+                _msg @ Message::Ping(_) => {
                     println!("Received Ping. Sending Pong");
                     client.send(Message::Pong(Vec::new())).unwrap();
                 }

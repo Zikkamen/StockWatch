@@ -4,7 +4,6 @@ use crate::data_analysis::finnhub_data_row::FinnhubDataRow;
     Find the first occurence of data in string and parse the data from the given index
 */
 pub fn parse_twelve_data(json_data: &String) -> FinnhubDataRow {
-    let n: usize = json_data.len();
     let json_chars = json_data.chars();
 
     let mut open_brackets: i32 = 0;

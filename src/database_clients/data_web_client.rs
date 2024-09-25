@@ -22,31 +22,13 @@ pub struct DataTradeModel {
     pub num_of_trades: i64,
 }
 
-impl DataTradeModel {
-    pub fn new() -> Self {
-        DataTradeModel {
-            timestamp: 0,
-            stock_name: String::new(),
-            stock_interval: 1,
-
-            avg_price: 0.0,
-            avg_price_open: -1.0,
-            min_price: 0.0,
-            max_price: 0.0,
-            volume_moved: 0,
-
-            num_of_trades: 0,
-        }
-    }
-}
-
 pub struct DataWebClient {
     client: WebSocket<MaybeTlsStream<TcpStream>>,
 }
 
 impl DataWebClient {
     pub fn new(addr: &str) -> Self {
-        let (mut client, _response) = connect(addr).unwrap();
+        let (client, _response) = connect(addr).unwrap();
 
         DataWebClient{ client: client }
     }
