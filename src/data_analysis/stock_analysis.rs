@@ -53,7 +53,7 @@ impl StockAnalyserWeb {
     pub fn add_twelve_data(&mut self, json_data: &String, last_data: &mut HashMap<String, i64>) {
         let mut twelve_data = parse_twelve_data(json_data);
 
-        if twelve_data.t != 0 {
+        if twelve_data.s.len() != 0 {
             let prev_volume = match last_data.get(&twelve_data.s) {
                 Some(v) => *v,
                 None => twelve_data.v,
@@ -63,6 +63,10 @@ impl StockAnalyserWeb {
 
             if twelve_data.v >= prev_volume {
                 twelve_data.v -= prev_volume;
+            }
+
+            if twelve_data.v == 0 {
+                twelve_data.v = 1;
             }
 
             self.add_single_data(twelve_data);

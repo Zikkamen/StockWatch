@@ -30,7 +30,11 @@ impl TwelveClient {
         loop {
             let (client, _response) = match connect(self.addr.clone()) {
                 Ok(v) => v,
-                Err(e) => panic!("Error creating Twelve Data Client: {}", e),
+                Err(e) => {
+                    println!("Error creating Twelve Data Client: {}", e);
+                    thread::sleep(Duration::from_millis(20_000));
+                    continue;
+                },
             };
 
             self.start_websocket(client, list_of_stocks);
@@ -74,11 +78,11 @@ impl TwelveClient {
                     let _ = self.stock_analysis_web.add_twelve_data(&text, &mut last_data);
                     println!("{}", text);
                 }
-                msg @ Message::Close(_) => {
+                _msg @ Message::Close(_) => {
                     let _ = client.send(Message::Close(None));
                     break;
                 }
-                msg @ Message::Ping(_) => {
+                _msg @ Message::Ping(_) => {
                     println!("Received Ping. Sending Pong");
                     client.send(Message::Pong(Vec::new())).unwrap();
                 }
