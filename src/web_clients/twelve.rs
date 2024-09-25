@@ -20,6 +20,7 @@ use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 pub struct TwelveClient{
     addr: String,
     stock_analysis_web: StockAnalyserWeb,
+    last_data: HashMap<String, i64>,
 }
 
 impl TwelveClient {
@@ -27,6 +28,7 @@ impl TwelveClient {
         TwelveClient{ 
             addr: format!("wss://ws.twelvedata.com/v1/quotes/price?apikey={}", credentials_store.get_token("twelvedata.com".to_string())),
             stock_analysis_web: stock_analysis_web,
+            last_data: HashMap::new(),
         }
     }
 
@@ -87,7 +89,6 @@ impl TwelveClient {
         
         println!("Subscribed to {}", stock_list);
 
-        let mut last_data = HashMap::<String, i64>::new();
         let mut last_ping: u32 = 0;
         
         loop {
@@ -125,7 +126,7 @@ impl TwelveClient {
             match msg {
                 msg @ Message::Text(_) => {
                     let text: String = msg.into_text().unwrap();
-                    let _ = self.stock_analysis_web.add_twelve_data(&text, &mut last_data);
+                    let _ = self.stock_analysis_web.add_twelve_data(&text, &mut self.last_data);
                     println!("{}", text);
                 }
                 _msg @ Message::Close(_) => {
