@@ -2,7 +2,7 @@ use std::thread;
 use std::time::Duration;
 use std::net::TcpStream;
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 
 use native_tls::TlsConnector;
 use native_tls::TlsStream;

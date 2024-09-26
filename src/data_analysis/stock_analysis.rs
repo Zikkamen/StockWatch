@@ -61,9 +61,7 @@ impl StockAnalyserWeb {
 
             last_data.insert(twelve_data.s.clone(), twelve_data.v);
 
-            if twelve_data.v >= prev_volume {
-                twelve_data.v -= prev_volume;
-            }
+            twelve_data.v -= prev_volume;
 
             if twelve_data.v == 0 {
                 twelve_data.v = 1;
