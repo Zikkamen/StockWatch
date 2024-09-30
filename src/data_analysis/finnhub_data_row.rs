@@ -5,13 +5,21 @@ pub struct FinnhubDataRow {
     pub c: i64, //Trade Conditions
     pub p: i64, //Price in cents
     pub s: String, //Stockprice name
+    pub e: String, //Stock exchange
     pub t: i64, //trade time in unix milliseconds
     pub v: i64, //volume
 }
 
 impl FinnhubDataRow {
     pub fn new() -> Self {
-        FinnhubDataRow{ c: -1, p: -1, s: String::new(), t: 0, v: -1 }
+        FinnhubDataRow { 
+            c: -1, 
+            p: -1, 
+            s: String::new(), 
+            e: String::new(), 
+            t: 0, 
+            v: -1
+        }
     }
 
     pub fn set_data(&mut self, key: &String, val: &String) {
@@ -41,6 +49,7 @@ impl FinnhubDataRow {
             "symbol" => self.set_stockname(val),
             "timestamp" => self.set_time(val),
             "day_volume" => self.set_volume(val),
+            "exchange" => self.set_exchange(val),
             _ => (),
         }
     }
@@ -90,6 +99,10 @@ impl FinnhubDataRow {
         };
 
         self.t = parsed_dt.timestamp_millis();
+    }
+
+    fn set_exchange(&mut self, raw_value: &String) {
+        self.e = raw_value.clone();
     }
 
     fn set_volume(&mut self, raw_value: &String) {
