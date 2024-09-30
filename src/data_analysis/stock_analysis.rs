@@ -54,16 +54,18 @@ impl StockAnalyserWeb {
         let mut twelve_data = parse_twelve_data(json_data);
 
         if twelve_data.s.len() != 0 {
-            let prev_volume = match last_data.get(&twelve_data.s) {
+            let key = twelve_data.s.clone() + "." + &twelve_data.e;
+
+            let prev_volume = match last_data.get(&key) {
                 Some(v) => *v,
                 None => twelve_data.v,
             };
 
-            last_data.insert(twelve_data.s.clone(), twelve_data.v);
+            last_data.insert(key, twelve_data.v);
 
             twelve_data.v -= prev_volume;
 
-            if twelve_data.v == 0 {
+            if twelve_data.v <= 0 {
                 twelve_data.v = 1;
             }
 
