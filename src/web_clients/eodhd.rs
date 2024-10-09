@@ -67,6 +67,7 @@ impl EodhdClient {
 
             match msg {
                 msg @ Message::Text(_) => {
+                    println!("Blocked");
                     let text: String = msg.into_text().unwrap();
                     let _ = self.stock_analysis_web.add_eodhd_data(&text);
                     println!("{}", text);

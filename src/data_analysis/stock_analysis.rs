@@ -116,11 +116,6 @@ fn start_thread(trade_map: Arc<RwLock<HashMap<String, CandleStickService>>>, mut
             }
         }
 
-        for trade in list_of_trades.into_iter() {
-            match data_web_client.add_finnhub_data(trade) {
-                Ok(_v) => (),
-                Err(e) => panic!("Error sending data using webclient {}", e),
-            };
-        }
+        data_web_client.add_finnhub_data(list_of_trades);
     }
 }
