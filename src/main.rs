@@ -18,8 +18,6 @@ use crate::web_clients::tiingo::TiingoClient;
 
 fn main() {
     let credentials_store:CredentialsStore = CredentialsStore::new();
-    let mut data_web_client:DataWebClient = DataWebClient::new("ws://localhost:9003");
-    
     let data_web_client:DataWebClient = DataWebClient::new("ws://localhost:9003");
     let stock_config_list:Vec<String> = data_web_client.start_client();
 
