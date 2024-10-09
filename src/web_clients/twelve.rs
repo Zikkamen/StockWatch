@@ -26,7 +26,7 @@ pub struct TwelveClient{
 impl TwelveClient {
     pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
         TwelveClient{ 
-            addr: format!("wss://ws.twelvedata.com/v1/quotes/price?apikey={}", credentials_store.get_token("twelvedata.com".to_string())),
+            addr: format!("wss://ws.twelvedata.com/v1/quotes/price?apikey={}", credentials_store.get_token("twelvedata.com")),
             stock_analysis_web: stock_analysis_web,
             last_data: HashMap::new(),
         }

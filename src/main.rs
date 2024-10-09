@@ -12,6 +12,7 @@ use crate::web_clients::eodhd::EodhdClient;
 use crate::web_clients::finnhub::FinnhubClient;
 use crate::web_clients::alpaca::AlpacaClient;
 use crate::web_clients::twelve::TwelveClient;
+use crate::web_clients::tiingo::TiingoClient;
 
 
 fn main() {
@@ -24,21 +25,27 @@ fn main() {
 
     let client_selection:usize = 3;
 
-    if client_selection == 0 {
-        let mut finnhub_client:FinnhubClient = FinnhubClient::new(credentials_store, stock_analysis_web);
-        finnhub_client.print_hello(&stock_config_list);
-    }
-    else if client_selection == 1 {
-        let mut eodhd_client:EodhdClient = EodhdClient::new(credentials_store, stock_analysis_web);
-        eodhd_client.print_hello(&stock_config_list);
-    }
-    else if client_selection == 2 {
-        let mut alpaca_client:AlpacaClient = AlpacaClient::new(credentials_store, stock_analysis_web);
-        alpaca_client.print_hello(&stock_config_list);
-    }
-    else if client_selection == 3 {
-        let mut twelve_client:TwelveClient = TwelveClient::new(credentials_store, stock_analysis_web);
-        twelve_client.print_hello(&stock_config_list);
-    }
-
+    match client_selection {
+        0 => {
+            let mut finnhub_client:FinnhubClient = FinnhubClient::new(credentials_store, stock_analysis_web);
+            finnhub_client.print_hello(&stock_config_list);
+        },
+        1 => {
+            let mut eodhd_client:EodhdClient = EodhdClient::new(credentials_store, stock_analysis_web);
+            eodhd_client.print_hello(&stock_config_list);
+        },
+        2 => {
+            let mut alpaca_client:AlpacaClient = AlpacaClient::new(credentials_store, stock_analysis_web);
+            alpaca_client.print_hello(&stock_config_list);
+        },
+        3 => {
+            let mut twelve_client:TwelveClient = TwelveClient::new(credentials_store, stock_analysis_web);
+            twelve_client.print_hello(&stock_config_list);
+        }
+        4 => {
+            let mut tiingo_client:TiingoClient = TiingoClient::new(credentials_store, stock_analysis_web);
+            tiingo_client.print_hello(&stock_config_list);
+        }
+        _ => (),
+    };
 }
