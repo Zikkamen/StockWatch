@@ -7,6 +7,7 @@ mod data_analysis;
 
 use crate::values_store::credentials_store::CredentialsStore;
 use crate::database_clients::data_web_client::DataWebClient;
+use crate::database_clients::trade_web_server::TradeWebServer;
 use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 use crate::web_clients::eodhd::EodhdClient;
 use crate::web_clients::finnhub::FinnhubClient;
@@ -17,11 +18,13 @@ use crate::web_clients::tiingo::TiingoClient;
 
 fn main() {
     let credentials_store:CredentialsStore = CredentialsStore::new();
-
-    let mut data_web_client:DataWebClient = DataWebClient::new("ws://localhost:9003");
+    let data_web_client:DataWebClient = DataWebClient::new("ws://localhost:9003");
     let stock_config_list:Vec<String> = data_web_client.start_client();
 
-    let stock_analysis_web:StockAnalyserWeb = StockAnalyserWeb::new(data_web_client);
+    let trade_web_server:TradeWebServer = TradeWebServer::new("localhost:9010");
+    trade_web_server.start_server();
+
+    let stock_analysis_web:StockAnalyserWeb = StockAnalyserWeb::new(data_web_client, trade_web_server);
 
     let client_selection:usize = 3;
 
