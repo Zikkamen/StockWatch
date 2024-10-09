@@ -20,16 +20,17 @@ pub struct FinnhubClient {
 impl FinnhubClient {
     pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
         FinnhubClient{ 
-            addr: format!("wss://ws.finnhub.io?token={}", credentials_store.get_token("Finnhub.io".to_string())),
+            addr: format!("wss://ws.finnhub.io?token={}", credentials_store.get_token("Finnhub.io")),
             stock_analysis_web: stock_analysis_web,
         }
     }
 
     pub fn print_hello(&mut self, list_of_stocks: &Vec<String>) {
+        println!("{}", self.addr);
         loop {
             let (client, _response) = match connect(self.addr.clone()) {
                 Ok(v) => v,
-                Err(e) => panic!("Error creating Eodhd Client: {}", e),
+                Err(e) => panic!("Error creating Finnhub Client: {}", e),
             };
 
             self.start_websocket(client, list_of_stocks);

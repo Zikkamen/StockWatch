@@ -18,8 +18,8 @@ impl CredentialsStore {
         credentials_store
     }
 
-    pub fn get_token(&self, key: String) -> String {
-        match self.credentials_map.get(&key) {
+    pub fn get_token(&self, key: &str) -> String {
+        match self.credentials_map.get(key) {
             Some(p) => p.to_string(),
             None => panic!("Couldn't find Token for key: {}", key),
         }

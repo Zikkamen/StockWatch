@@ -12,19 +12,17 @@ use tungstenite::{
 use crate::values_store::credentials_store::CredentialsStore;
 use crate::data_analysis::stock_analysis::StockAnalyserWeb;
 
-pub struct AlpacaClient{
+pub struct TiingoClient {
     addr: String,
+    token: String,
     stock_analysis_web: StockAnalyserWeb,
-    secret: String,
-    key: String,
 }
 
-impl AlpacaClient {
+impl TiingoClient {
     pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
-        AlpacaClient { 
-            addr: "wss://stream.data.alpaca.markets/v2/iex".to_string(),
-            key: credentials_store.get_token("alpaca.markets.key"),
-            secret: credentials_store.get_token("alpaca.markets.secret"),
+        TiingoClient{ 
+            addr: "wss://api.tiingo.com/iex".to_owned(),
+            token: credentials_store.get_token("tiingo.com"),
             stock_analysis_web: stock_analysis_web,
         }
     }
@@ -33,7 +31,7 @@ impl AlpacaClient {
         loop {
             let (client, _response) = match connect(self.addr.clone()) {
                 Ok(v) => v,
-                Err(e) => panic!("Error creating Eodhd Client: {}", e),
+                Err(e) => panic!("Error creating Tiingo Client: {}", e),
             };
 
             self.start_websocket(client, list_of_stocks);
@@ -43,17 +41,32 @@ impl AlpacaClient {
     }
 
     fn start_websocket(&mut self, mut client: WebSocket<MaybeTlsStream<TcpStream>>, stock_config_list: &Vec<String>) {
-        let _ = client.send(Message::Text(format!("{{\"action\": \"auth\", \"key\": \"{}\", \"secret\": \"{}\"}}", self.key, self.secret)));
+        let mut stock_list = String::new();
         
         for stock in stock_config_list.into_iter() {
-            let message = Message::Text(format!("{{\"action\":\"subscribe\",\"trades\":[\"{}\"]}}", stock));
+            if stock_list.len() > 0 {
+                stock_list.push(',');
+            }
 
-            let _ = client.send(message).unwrap();
-
-            println!("Subscribed to {}", stock);
+            stock_list.push('"');
+            stock_list.push_str(stock);
+            stock_list.push('"');
         }
-        
 
+        let mut msg_txt = String::new();
+
+        msg_txt.push_str("{");
+        msg_txt.push_str("\"eventName\":\"subscribe\",");
+        msg_txt.push_str(&format!("\"authorization\":\"{}\",", self.token));
+        msg_txt.push_str("\"eventData\": {");
+        msg_txt.push_str("\"thresholdLevel\": 0,");
+        msg_txt.push_str(&format!("\"tickers\": [{}]", stock_list));
+        msg_txt.push_str("}}");
+
+        println!("{}", msg_txt);
+
+        let _ = client.send(Message::Text(msg_txt)).unwrap();
+        
         loop {
             let msg = match client.read() {
                 Ok(p) => p,
@@ -67,7 +80,7 @@ impl AlpacaClient {
             match msg {
                 msg @ Message::Text(_) => {
                     let text: String = msg.into_text().unwrap();
-                    let _ = self.stock_analysis_web.add_alpaca_data(&text);
+                    //let _ = self.stock_analysis_web.add_finnhub_data(&text);
                     println!("{}", text);
                 }
                 _msg @ Message::Close(_) => {

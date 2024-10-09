@@ -20,7 +20,7 @@ pub struct EodhdClient{
 impl EodhdClient {
     pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
         EodhdClient{ 
-            addr: format!("wss://ws.eodhistoricaldata.com/ws/us?api_token={}", credentials_store.get_token("eodhd.com".to_string())),
+            addr: format!("wss://ws.eodhistoricaldata.com/ws/us?api_token={}", credentials_store.get_token("eodhd.com")),
             stock_analysis_web: stock_analysis_web,
         }
     }

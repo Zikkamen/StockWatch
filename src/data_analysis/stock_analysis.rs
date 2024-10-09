@@ -43,7 +43,7 @@ impl StockAnalyserWeb {
     }
 
     pub fn add_eodhd_data(&mut self, json_data: &String) {
-        self.add_data(parse_eodhd_data(json_data));
+        self.add_single_data(parse_eodhd_data(json_data));
     }
 
     pub fn add_alpaca_data(&mut self, json_data: &String) {
