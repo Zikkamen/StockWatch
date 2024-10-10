@@ -50,7 +50,7 @@ impl EodhdClient {
         
         for stock in stock_config_list.into_iter() {
             thread::sleep(Duration::from_millis(10));
-            let msg = Message::Text(format!("{}\"action\":\"subscribe\",\"symbols\":\"{}\"{}", "{", stock, "}"));
+            let msg = Message::Text(format!("{{\"action\":\"subscribe\",\"symbols\":\"{}.US\"}}", stock));
             client.send(msg).unwrap();
             println!("Subscribed to {}", stock);
         }
