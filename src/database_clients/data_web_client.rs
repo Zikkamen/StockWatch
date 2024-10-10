@@ -41,7 +41,13 @@ impl DataWebClient {
     }
 
     pub fn add_finnhub_data(&mut self, list_of_trades:Vec<DataTradeModel>) {
+        let n = self.update_queue.read().unwrap().len();
+
         let mut update_queue = self.update_queue.write().unwrap();
+
+        for i in 0..(n-10000) {
+            let _ = update_queue.pop_front();
+        }
 
         for database_model in list_of_trades.into_iter() {
             update_queue.push_back(stockdata_to_json(database_model));

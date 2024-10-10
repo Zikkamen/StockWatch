@@ -68,7 +68,7 @@ impl TradeWebServer {
             
                             update_queue_clone.write().unwrap().push_front(update);
             
-                            return;
+                            break;
                         },
                     };
                 }
