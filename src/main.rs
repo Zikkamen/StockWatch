@@ -26,7 +26,7 @@ fn main() {
 
     let stock_analysis_web:StockAnalyserWeb = StockAnalyserWeb::new(data_web_client, trade_web_server);
 
-    let client_selection:usize = 3;
+    let client_selection:usize = 0;
 
     match client_selection {
         0 => {
