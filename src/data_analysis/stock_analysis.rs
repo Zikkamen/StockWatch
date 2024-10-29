@@ -11,16 +11,18 @@ use crate::data_parsers::twelve_parser::parse_twelve_data;
 
 use crate::database_clients::data_web_client::DataWebClient;
 use crate::database_clients::data_web_client::DataTradeModel;
+use crate::database_clients::trade_web_server::TradeWebServer;
 
 use crate::data_analysis::finnhub_data_row::FinnhubDataRow;
 use crate::data_analysis::candle_stick_service::CandleStickService;
 
 pub struct StockAnalyserWeb {
     trade_map: Arc<RwLock<HashMap<String, CandleStickService>>>,
+    trade_web_server: TradeWebServer,
 }
 
 impl StockAnalyserWeb {
-    pub fn new(data_web_client: DataWebClient) -> Self {
+    pub fn new(data_web_client: DataWebClient, trade_web_server: TradeWebServer) -> Self {
         let trade_map_arc = Arc::new(RwLock::new(HashMap::new()));
         let trade_map_arc_clone = Arc::clone(&trade_map_arc);
 
@@ -30,6 +32,7 @@ impl StockAnalyserWeb {
 
         StockAnalyserWeb{ 
             trade_map: trade_map_arc,
+            trade_web_server: trade_web_server,
         }
     }
 
@@ -85,6 +88,8 @@ impl StockAnalyserWeb {
         let candle_stick_service:&mut CandleStickService = tmp_trade_map.get_mut(&data_row.s).unwrap();
 
         candle_stick_service.add_trade(&data_row);
+
+        self.trade_web_server.add_trade(data_row);
     }
 
     fn add_data(&mut self, data_rows: Vec<FinnhubDataRow>) {

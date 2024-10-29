@@ -22,6 +22,10 @@ impl FinnhubDataRow {
         }
     }
 
+    pub fn to_string(&self) -> String {
+        format!("{};{};{};{}", self.s, self.p, self.v, self.t)
+    }
+
     pub fn set_data(&mut self, key: &String, val: &String) {
         match key.as_str() {
             "p" => self.set_price(val),
