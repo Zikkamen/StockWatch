@@ -22,7 +22,7 @@ pub struct AlpacaClient{
 impl AlpacaClient {
     pub fn new(credentials_store: CredentialsStore, stock_analysis_web: StockAnalyserWeb) -> Self {
         AlpacaClient { 
-            addr: "wss://stream.data.alpaca.markets/v2/iex".to_string(),
+            addr: "wss://stream.data.alpaca.markets/v2/sip".to_string(),
             key: credentials_store.get_token("alpaca.markets.key"),
             secret: credentials_store.get_token("alpaca.markets.secret"),
             stock_analysis_web: stock_analysis_web,

@@ -77,6 +77,10 @@ impl StockAnalyserWeb {
     }
 
     fn add_single_data(&mut self, data_row: FinnhubDataRow) {
+        if !data_row.is_valid() {
+            return;
+        }
+
         if !self.trade_map.read().unwrap().contains_key(&data_row.s) {
             self.trade_map.write().unwrap().insert(
                 data_row.s.clone(),
