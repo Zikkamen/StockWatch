@@ -58,6 +58,13 @@ impl FinnhubDataRow {
         }
     }
 
+    pub fn is_valid(&self) -> bool {
+        self.p != -1
+        && self.v != -1
+        && self.t != 0
+        && self.s.len() > 0
+    }
+
     fn set_price(&mut self, raw_value: &String) {
         match raw_value.parse::<f64>() {
             Ok(v) => self.p = (v * 100.0) as i64,
