@@ -8,6 +8,7 @@ pub struct FinnhubDataRow {
     pub e: String, //Stock exchange
     pub t: i64, //trade time in unix milliseconds
     pub v: i64, //volume
+    pub poisoned: bool,
 }
 
 impl FinnhubDataRow {
@@ -18,7 +19,8 @@ impl FinnhubDataRow {
             s: String::new(), 
             e: String::new(), 
             t: 0, 
-            v: -1
+            v: -1,
+            poisoned: false,
         }
     }
 
@@ -43,6 +45,7 @@ impl FinnhubDataRow {
             "S" => self.set_stockname(val),
             "t" => self.set_alpaca_time(val),
             "s" => self.set_volume(val),
+            "T" => self.set_valid(val),
             _ => (),
         }
     }
@@ -63,6 +66,13 @@ impl FinnhubDataRow {
         && self.v != -1
         && self.t != 0
         && self.s.len() > 0
+        && !self.poisoned
+    }
+
+    fn set_valid(&mut self, raw_value: &String) {
+        if raw_value != "t" {
+            self.poisoned = true;
+        }
     }
 
     fn set_price(&mut self, raw_value: &String) {
