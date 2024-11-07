@@ -55,7 +55,7 @@ impl TradeWebServer {
                     let update = match update {
                         Some(v) => v,
                         None => {
-                            thread::sleep(Duration::from_millis(5));
+                            thread::sleep(Duration::from_millis(1));
             
                             continue;
                         },
