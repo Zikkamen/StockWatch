@@ -46,6 +46,7 @@ impl FinnhubDataRow {
             "t" => self.set_alpaca_time(val),
             "s" => self.set_volume(val),
             "T" => self.set_valid(val),
+            "x" => self.set_alpaca_exchange(val),
             _ => (),
         }
     }
@@ -67,6 +68,12 @@ impl FinnhubDataRow {
         && self.t != 0
         && self.s.len() > 0
         && !self.poisoned
+    }
+
+    fn set_alpaca_exchange(&mut self, raw_value: &String) {
+        if raw_value == "D" {
+            self.poisoned = true;
+        }
     }
 
     fn set_valid(&mut self, raw_value: &String) {
